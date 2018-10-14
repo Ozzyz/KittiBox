@@ -1,14 +1,14 @@
 {
     "model": {
-    "input_file": "../inputs/kitti_input.py",
+    "input_file": "../inputs/bdd_input.py",
     "architecture_file" : "../encoder/vgg.py",
     "objective_file" : "../decoder/fastBox.py",
     "optimizer_file" : "../optimizer/generic_optimizer.py",
     "evaluator_file" : "../evals/kitti_eval.py"
     },
     "data": {
-        "train_file": "KittiBox/train.txt",
-        "val_file": "KittiBox/val.txt",
+        "train_file": "img_bbox_val.txt",
+        "val_file": "img_bbox_val.txt",
         "truncate_data": false,
         "eval_cmd": "../submodules/KittiObjective2/./evaluate_object2",
         "label_dir": "KittiBox/training/label_2"

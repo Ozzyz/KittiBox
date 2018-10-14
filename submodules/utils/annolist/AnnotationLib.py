@@ -5,12 +5,12 @@ from math import sqrt
 import gzip
 import bz2
 import sys
-import numpy as np;
+import numpy as np
 
 from collections import MutableSequence
 
 #import AnnoList_pb2
-import PalLib;
+from . import PalLib
 
 import xml.dom.minidom
 from xml.dom.minidom import Node
@@ -36,12 +36,12 @@ def cmpAnnoRectsByScoreDescending(r1, r2):
 	return (-1)*cmp(r1.score, r2.score)
 
 def cmpDetAnnoRectsByScore(r1, r2):
-	return cmp(r1.rect.score, r2.rect.score);
+	return cmp(r1.rect.score, r2.rect.score)
 
 
 def suffixMatch(fn1, fn2):
-	l1 = len(fn1);
-	l2 = len(fn2);
+	l1 = len(fn1)
+	l2 = len(fn2)
 		
 	if fn1[-l2:] == fn2:
 		return True
@@ -53,15 +53,15 @@ def suffixMatch(fn1, fn2):
 
 class AnnoList(MutableSequence):
 	"""Define a list format, which I can customize"""
-	TYPE_INT32 = 5;
-	TYPE_FLOAT = 2;
-	TYPE_STRING = 9;
+	TYPE_INT32 = 5
+	TYPE_FLOAT = 2
+	TYPE_STRING = 9
 
 	def __init__(self, data=None):
 		super(AnnoList, self).__init__()
 
-		self.attribute_desc = {};
-                self.attribute_val_to_str = {};
+		self.attribute_desc = {}
+		self.attribute_val_to_str = {}
 
 		if not (data is None):
 			self._list = list(data)
@@ -69,52 +69,52 @@ class AnnoList(MutableSequence):
 			self._list = list()	
         
 	def add_attribute(self, name, dtype):
-		_adesc = AnnoList_pb2.AttributeDesc();
-		_adesc.name = name;
+		_adesc = AnnoList_pb2.AttributeDesc()
+		_adesc.name = name
 		if self.attribute_desc:
-			_adesc.id = max((self.attribute_desc[d].id for d in self.attribute_desc)) + 1;
+			_adesc.id = max((self.attribute_desc[d].id for d in self.attribute_desc)) + 1
 		else:
-			_adesc.id = 0;
+			_adesc.id = 0
 
 		if dtype == int:
-			_adesc.dtype = AnnoList.TYPE_INT32;
+			_adesc.dtype = AnnoList.TYPE_INT32
 		elif dtype == float or dtype == np.float32:
-			_adesc.dtype = AnnoList.TYPE_FLOAT;
+			_adesc.dtype = AnnoList.TYPE_FLOAT
 		elif dtype == str:
-			_adesc.dtype = AnnoList.TYPE_STRING;
+			_adesc.dtype = AnnoList.TYPE_STRING
 		else:
-                        print "unknown attribute type: ", dtype
-			assert(False);
+			print("unknown attribute type: ", dtype)
+			assert False
 		
-		#print "adding attribute: {}, id: {}, type: {}".format(_adesc.name, _adesc.id, _adesc.dtype);
-		self.attribute_desc[name] = _adesc;
+		#print "adding attribute: {}, id: {}, type: {}".format(_adesc.name, _adesc.id, _adesc.dtype)
+		self.attribute_desc[name] = _adesc
 
-        def add_attribute_val(self, aname, vname, val):
-                # add attribute before adding string corresponding to integer value
-                assert(aname in self.attribute_desc);
+	def add_attribute_val(self, aname, vname, val):
+		# add attribute before adding string corresponding to integer value
+		assert(aname in self.attribute_desc)
 
-                # check and add if new 
-                if all((val_desc.id != val for val_desc in self.attribute_desc[aname].val_to_str)):
-                        val_desc = self.attribute_desc[aname].val_to_str.add()
-                        val_desc.id = val;
-                        val_desc.s = vname;
+		# check and add if new 
+		if all((val_desc.id != val for val_desc in self.attribute_desc[aname].val_to_str)):
+				val_desc = self.attribute_desc[aname].val_to_str.add()
+				val_desc.id = val
+				val_desc.s = vname
 
-                # also add to map for quick access
-                if not aname in self.attribute_val_to_str:
-                        self.attribute_val_to_str[aname] = {};
+		# also add to map for quick access
+		if not aname in self.attribute_val_to_str:
+				self.attribute_val_to_str[aname] = {}
 
-                assert(not val in self.attribute_val_to_str[aname]);
-                self.attribute_val_to_str[aname][val] = vname;
+		assert(not val in self.attribute_val_to_str[aname])
+		self.attribute_val_to_str[aname][val] = vname
 
 
-        def attribute_get_value_str(self, aname, val):
-                if aname in self.attribute_val_to_str and val in self.attribute_val_to_str[aname]:
-                        return self.attribute_val_to_str[aname][val];
-                else:
-                        return str(val);
+	def attribute_get_value_str(self, aname, val):
+			if aname in self.attribute_val_to_str and val in self.attribute_val_to_str[aname]:
+					return self.attribute_val_to_str[aname][val]
+			else:
+					return str(val)
 
-        def save(self, fname):
-                save(fname, self);
+	def save(self, fname):
+			save(fname, self)
         
 	#MA: list interface   
 	def __len__(self):
@@ -122,10 +122,10 @@ class AnnoList(MutableSequence):
 
 	def __getitem__(self, ii):
                 if isinstance(ii, slice):
-                        res = AnnoList();
-                        res.attribute_desc = self.attribute_desc;
+                        res = AnnoList()
+                        res.attribute_desc = self.attribute_desc
                         res._list = self._list[ii]
-                        return res;
+                        return res
                 else:
                         return self._list[ii]
 
@@ -151,31 +151,31 @@ class AnnoList(MutableSequence):
 
 def is_compatible_attr_type(protobuf_type, attr_type):
         if protobuf_type == AnnoList.TYPE_INT32:
-                return (attr_type == int);
+                return (attr_type == int)
         elif protobuf_type == AnnoList.TYPE_FLOAT:
-                return (attr_type == float or attr_type == np.float32);
+                return (attr_type == float or attr_type == np.float32)
         elif protobuf_type == AnnoList.TYPE_STRING:
-                return (attr_type == str);
+                return (attr_type == str)
         else:
-                assert(false);
+                assert(false)
         
 
 def protobuf_type_to_python(protobuf_type):
         if protobuf_type == AnnoList.TYPE_INT32:
-                return int;
+                return int
         elif protobuf_type == AnnoList.TYPE_FLOAT:
-                return float;
+                return float
         elif protobuf_type == AnnoList.TYPE_STRING:
-                return str;
+                return str
         else:
-                assert(false);
+                assert(false)
 
 
 class AnnoPoint(object):
 	def __init__(self, x=None, y=None, id=None):
-		self.x = x;
-		self.y = y;
-		self.id = id;
+		self.x = x
+		self.y = y
+		self.id = id
 
 class AnnoRect(object):
 	def __init__(self, x1=-1, y1=-1, x2=-1, y2=-1):
@@ -195,8 +195,8 @@ class AnnoRect(object):
 		self.classID = -1
 		self.track_id = -1
 
-		self.point = [];
-                self.at = {};
+		self.point = []
+		self.at = {}
 
 	def __str__(self):
 		return "<AnnoRect x1: {}, x2: {}, y1: {}, y2: {}, class: {}>".format(
@@ -254,11 +254,11 @@ class AnnoRect(object):
 			self.y2 = min(max_y, self.y2)
 
 	def printContent(self):
-		print "Coords: ", self.x1, self.y1, self.x2, self.y2
-		print "Score: ", self.score
-		print "Articulations: ", self.articulations
-		print "Viewpoints: ", self.viewpoints
-		print "Silhouette: ", self.silhouetteID
+		print("Coords: ", self.x1, self.y1, self.x2, self.y2)
+		print("Score: ", self.score)
+		print("Articulations: ", self.articulations)
+		print("Viewpoints: ", self.viewpoints)
+		print("Silhouette: ", self.silhouetteID)
 
 	def ascii(self):
 		r = "("+str(self.x1)+", "+str(self.y1)+", "+str(self.x2)+", "+str(self.y2)+")"
@@ -313,10 +313,10 @@ class AnnoRect(object):
 		if(self.y2 <= other.y1):
 			return (0, 0)
 		
-		l = max(self.x1, other.x1);
-		t = max(self.y1, other.y1);
-		r = min(self.x2, other.x2);
-		b = min(self.y2, other.y2);
+		l = max(self.x1, other.x1)
+		t = max(self.y1, other.y1)
+		r = min(self.x2, other.x2)
+		b = min(self.y2, other.y2)
 		return (r - l, b - t)
 		
 		#Alternate implementation
@@ -446,26 +446,26 @@ class AnnoRect(object):
 			annopoints_el = doc.createElement("annopoints")
 
 			for p in self.point:
-				point_el = doc.createElement("point");
+				point_el = doc.createElement("point")
 				
-				point_id_el = doc.createElement("id");
-				point_id_val = doc.createTextNode(str(p.id));
-				point_id_el.appendChild(point_id_val);
-				point_el.appendChild(point_id_el);
+				point_id_el = doc.createElement("id")
+				point_id_val = doc.createTextNode(str(p.id))
+				point_id_el.appendChild(point_id_val)
+				point_el.appendChild(point_id_el)
 
-				point_x_el = doc.createElement("x");
-				point_x_val = doc.createTextNode(str(p.x));
-				point_x_el.appendChild(point_x_val);
-				point_el.appendChild(point_x_el);
+				point_x_el = doc.createElement("x")
+				point_x_val = doc.createTextNode(str(p.x))
+				point_x_el.appendChild(point_x_val)
+				point_el.appendChild(point_x_el)
 
-				point_y_el = doc.createElement("y");
-				point_y_val = doc.createTextNode(str(p.y));
-				point_y_el.appendChild(point_y_val);
-				point_el.appendChild(point_y_el);
+				point_y_el = doc.createElement("y")
+				point_y_val = doc.createTextNode(str(p.y))
+				point_y_el.appendChild(point_y_val)
+				point_el.appendChild(point_y_el)
 
-				annopoints_el.appendChild(point_el);
+				annopoints_el.appendChild(point_el)
 			
-			rect_el.appendChild(annopoints_el);
+			rect_el.appendChild(annopoints_el)
 			
 		node.appendChild(rect_el)
 
@@ -491,7 +491,7 @@ class Annotation(object):
 		return os.path.join(self.imagePath, self.imageName)
 
 	def printContent(self):
-		print "Name: ", self.imageName
+		print("Name: ", self.imageName)
 		for rect in self.rects:
 			rect.printContent()
 
@@ -552,8 +552,8 @@ class detAnnoRect:
 
 def parseTii(filename):
 
-        # MA: this must be some really old code
-        assert(False);
+	# MA: this must be some really old code
+	assert(False)
 	annotations = []
 
 	#--- parse xml ---#
@@ -594,7 +594,7 @@ def parseTii(filename):
 					rect.x2 = float(aNode.firstChild.data)
 					aNode = vehicle.getAttributeNode( orientation+"_BottomRight_Y")
 					rect.y2 = float(aNode.firstChild.data)
-					print "pedestrian:", anno.imageName, rect.x1, rect.y1, rect.x2, rect.y2
+					print("pedestrian:", anno.imageName, rect.x1, rect.y1, rect.x2, rect.y2)
 					anno.rects.append(rect)
 
 		annotations.append(anno)
@@ -686,18 +686,18 @@ def parseXML(filename):
 			for annoPoints in annoRect.getElementsByTagName("annopoints"):				
 				for annoPoint in annoPoints.getElementsByTagName("point"):
 
-					p = AnnoPoint();
+					p = AnnoPoint()
 					for annoPointX in annoPoint.getElementsByTagName("x"):
-						p.x = int(float(annoPointX.firstChild.data));
+						p.x = int(float(annoPointX.firstChild.data))
 
 					for annoPointY in annoPoint.getElementsByTagName("y"):
-						p.y = int(float(annoPointY.firstChild.data));
+						p.y = int(float(annoPointY.firstChild.data))
 						
 					for annoPointId in annoPoint.getElementsByTagName("id"):
-						p.id = int(annoPointId.firstChild.data);
+						p.id = int(annoPointId.firstChild.data)
 
-					assert(p.x != None and p.y != None and p.id != None);
-					rect.point.append(p);					
+					assert(p.x != None and p.y != None and p.id != None)
+					rect.point.append(p)					
 
 			rects.append(rect)
 
@@ -716,17 +716,17 @@ def parse(filename, abs_path=False):
 	
 	if(ext == ".idl"):
 		annolist = parseIDL(filename)
-        elif(ext == ".al"):
+	elif(ext == ".al"):
 		annolist = parseXML(filename)
-        elif(ext == ".pal"):
-		annolist = PalLib.pal2al(PalLib.loadPal(filename));
-        else:
-                annolist = AnnoList([]);
+	elif(ext == ".pal"):
+		annolist = PalLib.pal2al(PalLib.loadPal(filename))
+	else:
+		annolist = AnnoList([])
 
-        if abs_path:
-                basedir = os.path.dirname(os.path.abspath(filename))
-                for a in annolist:
-                        a.imageName = basedir + "/" + os.path.basename(a.imageName)
+	if abs_path:
+		basedir = os.path.dirname(os.path.abspath(filename))
+		for a in annolist:
+				a.imageName = basedir + "/" + os.path.basename(a.imageName)
 
 	return annolist
 
@@ -752,14 +752,14 @@ def parseIDL(filename):
 		lines = bfile.readlines()
 		bfile.close()
 
-        annotations = AnnoList([])
+	annotations = AnnoList([])
 
 	for line in lines:
 		anno = Annotation()
 
 		### remove line break
 		if (line[-1]=='\n'):
-			line = line[:-1]; # remove '\n'
+			line = line[:-1] # remove '\n'
 		lineLen = len(line)
 		#print line
 
@@ -784,11 +784,11 @@ def parseIDL(filename):
 		rectSegs=[]
 		if (posImageEnd!=-1 and posImageEnd+4<lineLen):
 
-			line = line[posImageEnd+3:-1]; # remove ; or .
+			line = line[posImageEnd+3:-1] # remove  or .
 
 			segments = line.split(',')
 			if (len(segments)%4!=0):
-				print "Parse Errror"
+				print("Parse Errror")
 			else:
 				for i in range(0,len(segments),4):
 					rectSeg = segments[i]+","+segments[i+1]+","+segments[i+2]+","+segments[i+3]
@@ -831,7 +831,7 @@ def parseIDL(filename):
 ### Saving
 
 def save(filename, annotations):
-	print "saving: ", filename;
+	print("saving: ", filename)
 
 	name, ext = os.path.splitext(filename)
 
@@ -845,11 +845,11 @@ def save(filename, annotations):
 		return saveXML(filename, annotations)
 
 	elif(ext == ".pal"):
-		return PalLib.savePal(filename, PalLib.al2pal(annotations));
+		return PalLib.savePal(filename, PalLib.al2pal(annotations))
 
 	else:
-		assert(False);
-		return False;
+		assert(False)
+		return False
 
 def saveIDL(filename, annotations):
 	[name, ext] = os.path.splitext(filename)
@@ -867,7 +867,7 @@ def saveIDL(filename, annotations):
 	for annotation in annotations:
 		annotation.writeIDL(file)
 		if (i+1<len(annotations)):
-			file.write(";\n")
+			file.write("\n")
 		else:
 			file.write(".\n")
 		i+=1
@@ -910,7 +910,7 @@ def saveXML(filename, annotations):
 	elif(ext == ".bz2"):
 		writer = bz2.BZ2File(filename, 'w')
 	else:
-		print "invalid filename - .al(.gz|.bz2) is accepted"
+		print("invalid filename - .al(.gz|.bz2) is accepted")
 		return
 
 	
@@ -918,7 +918,7 @@ def saveXML(filename, annotations):
 		xml.dom.ext.PrettyPrint(document, writer)
 	else:
 		# MA: skip header (currently Matlab's loadannotations can't deal with the header)
-		document.documentElement.writexml(writer);
+		document.documentElement.writexml(writer)
 
 		#document.writexml(writer)
 
@@ -948,12 +948,12 @@ def getStats(annotations):
 				noSmall=noSmall+1
 			heights.append(rect.height())
 			if (rect.width()==0):
-				print "Warning: width=0 in image ", anno.imageName
+				print("Warning: width=0 in image ", anno.imageName)
 				widths.append(1)
 			else:
 				widths.append(rect.width())
 				if (float(rect.height())/float(rect.width())<1.5):
-					print "Degenerated pedestrian annotation: ", anno.imageName
+					print("Degenerated pedestrian annotation: ", anno.imageName)
 
 	###--- compute average height and variance ---###
 	avgHeight = 0
@@ -994,13 +994,13 @@ def getStats(annotations):
 		varWidth=float(varWidth)/float(no-1)
 
 	###--- write statistics ---###
-	print "  Total # rects:", no
-	print "     avg. Width:", avgWidth, " (", sqrt(varWidth), "standard deviation )"
-	print "    avg. Height:", avgHeight, " (", sqrt(varHeight), "standard deviation )"
-	print "     tiny rects:", noTiny, " (< 36 pixels)"
-	print "    small rects:", noSmall, " (< 128 pixels)"
-	print "    minimum height:", minHeight
-	print "    maximum height:", maxHeight
+	print("  Total # rects:", no)
+	print("     avg. Width:", avgWidth, " (", sqrt(varWidth), "standard deviation )")
+	print("    avg. Height:", avgHeight, " (", sqrt(varHeight), "standard deviation )")
+	print("     tiny rects:", noTiny, " (< 36 pixels)")
+	print("    small rects:", noSmall, " (< 128 pixels)")
+	print("    minimum height:", minHeight)
+	print("    maximum height:", maxHeight)
 
 	###--- return ---###
 	return [widths, heights]
@@ -1104,7 +1104,7 @@ def extractSubSet(gtIDL, detIDL):
 					break
 
 		if(not imageFound):
-			print "Image not found " + gtAnno.imageName + " !"
+			print("Image not found " + gtAnno.imageName + " !")
 			missingRecallIDL.append(gtAnno)
 			filteredIDL.append(filteredAnno)
 			continue
