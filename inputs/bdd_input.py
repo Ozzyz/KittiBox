@@ -25,7 +25,7 @@ def read_bdd_anno(label_file):
     Returns:
         List of bboxes with associated class id
     """
-    logging.info("Reading label file {}".format(label_file))
+    logging.debug("Reading label file {}".format(label_file))
     
     return extract_bboxes(label_file)
 
@@ -50,9 +50,11 @@ def extract_bbox_rect(label_list):
     """ Returns an AnnoRect object from the data in the given label list """
     x1, y1, x2, y2 = [float(x) for x in label_list[4:8]]
     if x1 < x2:
-        logging.warn(f"Bounding boxes may have illegal format -> x1: {x1}, x2: {x2}")
+        pass
+        #logging.warn(f"Bounding boxes may have illegal format -> x1: {x1}, x2: {x2}")
     if y1 < y2:
-        logging.warn(f"y1: {y1}, y2: {y2}")
+        pass
+        #logging.warn(f"y1: {y1}, y2: {y2}")
     return AnnoLib.AnnoRect(x1=x1, y1=y1, x2=x2, y2=y2)
 
 
@@ -64,13 +66,15 @@ def _gen_label_list(label_file):
 
     label_list = []
     for label_row in label_lines:
-        logging.info(f"Parsing label line {label_row} in {label_file}")
+        #logging.info(f"Parsing label line {label_row} in {label_file}")
         labels = label_row.split(' ')
         # Since some of the labels are separated by whitespace (e.g 'traffic light')
         if len(labels) == 17:
-            category_label = f"{labels[0]} {labels[1]}"
-            labels = [category_label, *labels[2:]]
-        assert len(labels) == 16, f"Expected number of columns to be 16, not {len(labels)}"
+            category_label = labels[0] + " " + labels[1]
+            #category_label = f"{labels[0]} {labels[1]}"
+            #labels = [category_label, *labels[2:]]
+            labels = [category_label] + labels[2:]
+        assert len(labels) == 16, "Expected number of columns to be 16, not" + str(len(labels))
         label_list.append(labels)
     return label_list
 
@@ -286,14 +290,11 @@ def inputs(hypes, q, phase):
         assert("Bad phase: {}".format(phase))
 
 def _rescale_boxes(current_shape, anno, target_height, target_width):
+    #logging.debug(f"Rescaling box {current_shape} to ({target_height} {target_width}")
     x_scale = target_width / float(current_shape[1])
     y_scale = target_height / float(current_shape[0])
     for r in anno.rects:
-        logging.info(f"Scaling x ({r.x1} {r.x2}) by {x_scale}")
-        logging.info(f"Scaling y ({r.y1} {r.y2}) by {y_scale}")
         assert r.x1 < r.x2
-        print("Typeof x1: ", type(r.x1))
-        print("Typeof scale: ", type(x_scale))
         r.x1 *= x_scale
         r.x2 *= x_scale
         assert r.x1 < r.x2

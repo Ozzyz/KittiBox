@@ -1,6 +1,6 @@
 import sys
 #import AnnoList_pb2
-from . import AnnotationLib
+import AnnotationLib
 
 #from ma_utils import is_number
 
