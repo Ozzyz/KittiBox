@@ -4,14 +4,14 @@
     "architecture_file" : "../encoder/vgg.py",
     "objective_file" : "../decoder/fastBox.py",
     "optimizer_file" : "../optimizer/generic_optimizer.py",
-    "evaluator_file" : "../evals/kitti_eval.py"
+    "evaluator_file" : "../evals/bdd_eval.py"
     },
     "data": {
         "train_file": "img_bbox_val.txt",
         "val_file": "img_bbox_val.txt",
         "truncate_data": false,
         "eval_cmd": "../submodules/KittiObjective2/./evaluate_object2",
-        "label_dir": "KittiBox/training/label_2"
+        "label_dir": "bdd100k/kitti_labels/val"
     },
     "logging": {
         "display_iter": 200,
@@ -48,7 +48,7 @@
     "image_width": 1248, 
     "grid_width": 39,
     "grid_height": 12,
-    "batch_size": 5, 
+    "batch_size": 1, 
     "tau": 0.35,
     "scale_down": 0.1,
     "focus_size": 1.8,
