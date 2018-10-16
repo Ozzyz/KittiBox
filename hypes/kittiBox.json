@@ -7,8 +7,8 @@
     "evaluator_file" : "../evals/bdd_eval.py"
     },
     "data": {
-        "train_file": "img_bbox_val.txt",
-        "val_file": "img_bbox_val.txt",
+        "train_file": "val_test_bbox.txt",
+        "val_file": "val_test_bbox.txt",
         "truncate_data": false,
         "eval_cmd": "../submodules/KittiObjective2/./evaluate_object2",
         "label_dir": "bdd100k/kitti_labels/val"
