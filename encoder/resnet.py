@@ -124,11 +124,11 @@ def _initalize_variables(hypes):
 
         filename = checkpoint_fn(layers)
 
-        if 'TV_DIR_DATA' in os.environ:
-            filename = os.path.join(os.environ['TV_DIR_DATA'], 'weights',
+        if 'TV_DIR_ALL_DATA' in os.environ:
+            filename = os.path.join(os.environ['TV_DIR_ALL_DATA'], 'weights',
                                     "tensorflow_resnet", filename)
         else:
-            filename = os.path.join('DATA', 'weights', "tensorflow_resnet",
+            filename = os.path.join('ALL_DATA', 'weights', "tensorflow_resnet",
                                     filename)
 
         if not os.path.exists(filename):

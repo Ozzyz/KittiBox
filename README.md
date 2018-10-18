@@ -95,7 +95,7 @@ Those modules operate independently. This allows easy experiments with different
 
 ## Managing Folders
 
-By default, the data is stored in the folder `KittiBox/DATA` and the output of runs in `KittiBox/RUNS`. This behaviour can be changed by adjusting the environoment Variabels: `$TV_DIR_DATA` and `$TV_DIR_RUNS`.
+By default, the data is stored in the folder `KittiBox/ALL_DATA` and the output of runs in `KittiBox/RUNS`. This behaviour can be changed by adjusting the environoment Variabels: `$TV_DIR_ALL_DATA` and `$TV_DIR_RUNS`.
 
 For organizing your experiments you can use:
 `python train.py --project batch_size_bench --name size_5`. This will store the run in the subfolder:  `$TV_DIR_RUNS/batch_size_bench/size_5_%DATE`
@@ -133,7 +133,7 @@ Here are some Flags which will be useful when working with KittiBox and TensorVi
 
 In addition the following TensorVision environoment Variables will be useful:
 
-`$TV_DIR_DATA`: specify meta directory for data <br>
+`$TV_DIR_ALL_DATA`: specify meta directory for data <br>
 `$TV_DIR_RUNS`: specify meta directiry for output <br>
 `$TV_USE_GPUS`: specify default GPU behavour. <br>
 

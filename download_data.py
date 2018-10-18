@@ -22,7 +22,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
 
 sys.path.insert(1, 'incl')
 
-# Please set kitti_data_url to the download link for the Kitti DATA.
+# Please set kitti_data_url to the download link for the Kitti ALL_DATA.
 #
 # You can obtain by going to this website:
 # http://www.cvlibs.net/download.php?file=data_road.zip
@@ -38,18 +38,18 @@ def get_pathes():
     """
     Get location of `data_dir` and `run_dir'.
 
-    Defaut is ./DATA and ./RUNS.
+    Defaut is ./ALL_DATA and ./RUNS.
     Alternativly they can be set by the environoment variabels
-    'TV_DIR_DATA' and 'TV_DIR_RUNS'.
+    'TV_DIR_ALL_DATA' and 'TV_DIR_RUNS'.
     """
 
-    if 'TV_DIR_DATA' in os.environ:
-        data_dir = os.path.join(['hypes'], os.environ['TV_DIR_DATA'])
+    if 'TV_DIR_ALL_DATA' in os.environ:
+        data_dir = os.path.join(['hypes'], os.environ['TV_DIR_ALL_DATA'])
     else:
-        data_dir = "DATA"
+        data_dir = "ALL_DATA"
 
     if 'TV_DIR_RUNS' in os.environ:
-        run_dir = os.path.join(['hypes'], os.environ['TV_DIR_DATA'])
+        run_dir = os.path.join(['hypes'], os.environ['TV_DIR_ALL_DATA'])
     else:
         run_dir = "RUNS"
 
@@ -94,7 +94,7 @@ def main():
     if not os.path.exists(kitti_dec_dir):
         os.makedirs(kitti_dec_dir)
 
-    # Download VGG DATA
+    # Download VGG ALL_DATA
     if not os.path.exists(vgg_weights):
         download_command = "wget {} -P {}".format(vgg_url, data_dir)
         logging.info("Downloading VGG weights.")
@@ -106,7 +106,7 @@ def main():
     kitti_dec_zip = os.path.join(kitti_dec_dir, 'data_object_image_2.zip')
     kitti_label_zip = os.path.join(kitti_dec_dir, "data_object_label_2.zip")
 
-    # Download KITTI DATA
+    # Download KITTI ALL_DATA
     if not os.path.exists(kitti_dec_zip):
         if kitti_data_url == '':
             logging.error("Data URL for Kitti Data not provided.")
@@ -136,7 +136,7 @@ def main():
                                        os.path.basename(kitti_label_zip))
         download(kitti_label_url, kitti_dec_dir)
 
-    # Extract and prepare KITTI DATA
+    # Extract and prepare KITTI ALL_DATA
     logging.info("Extracting kitti_road data.")
     zipfile.ZipFile(kitti_dec_zip, 'r').extractall(kitti_dec_dir)
     zipfile.ZipFile(kitti_label_zip, 'r').extractall(kitti_dec_dir)
