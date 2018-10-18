@@ -66,8 +66,18 @@ def evaluate(hypes, sess, image_pl, softmax):
     label_dir = os.path.join(hypes['dirs']['data_dir'],
                              hypes['data']['label_dir'])
 
+    logging.info("Trying to call kitti evaluation code - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
     try:
-        subprocess.check_call([eval_cmd, val_path, label_dir])
+        cmd = [eval_cmd, val_path, label_dir]
+        popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        print(popen.stdout.read())
+        print("Reading from subprocess stdout: ", popen.stdout.readline())
+        for stdout_line in iter(popen.stdout.readline, ""):
+            print(stdout_line) 
+        popen.stdout.close()
+        return_code = popen.wait()
+        if return_code:
+            raise subprocess.CalledProcessError(return_code, cmd)
     except OSError as error:
         logging.warning("Failed to run run kitti evaluation code.")
         logging.warning("Please run: `cd submodules/KittiObjective2/ && make`")
@@ -94,7 +104,8 @@ def evaluate(hypes, sess, image_pl, softmax):
         hypes, sess, image_pl, softmax, False)
 
     val_path = make_val_dir(hypes, False)
-    subprocess.check_call([eval_cmd, val_path, label_dir])
+    
+    subprocess.check_call([eval_cmd, val_path, label_dir], stdout=subprocess.STDOUT)
     res_file = os.path.join(val_path, "stats_car_detection.txt")
 
     with open(res_file) as f:
@@ -144,7 +155,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
         image_file = file.split(" ")[0]
         if not validation and random.random() > 0.2:
             continue
-        image_file = os.path.join(base_path, image_file)
+        #image_file = os.path.join(base_path, image_file)
         orig_img = scp.misc.imread(image_file)[:, :, :3]
         img = scp.misc.imresize(orig_img, (hypes["image_height"],
                                            hypes["image_width"]),

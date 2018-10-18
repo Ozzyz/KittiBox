@@ -112,6 +112,7 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
     success = false;
     return detections;
   }
+  cout << "Loading detections from " << file_name << endl;
   while (!feof(fp)) {
     tDetection d;
     double trash;
@@ -139,6 +140,7 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
   }
   fclose(fp);
   success = true;
+  cout << "Sucess: " << success << endl;
   return detections;
 }
 
@@ -146,6 +148,7 @@ vector<tGroundtruth> loadGroundtruth(string file_name,bool &success) {
 
   // holds all ground truth (ignored ground truth is indicated by an index vector
   vector<tGroundtruth> groundtruth;
+  cout << "Loading ground truth, filename: " << file_name << endl;
   FILE *fp = fopen(file_name.c_str(),"r");
   if (!fp) {
     success = false;
@@ -170,7 +173,7 @@ vector<tGroundtruth> loadGroundtruth(string file_name,bool &success) {
 }
 
 void saveStats (const vector<double> &precision, const vector<double> &aos, FILE *fp_det, FILE *fp_ori) {
-
+  cout << "Saving stats to file " << endl;
   // save precision to file
   if(precision.empty())
     return;
@@ -193,7 +196,7 @@ EVALUATION HELPER FUNCTIONS
 // criterion defines whether the overlap is computed with respect to both areas (ground truth and detection)
 // or with respect to box a or b (detection and "dontcare" areas)
 inline double boxoverlap(tBox a, tBox b, int32_t criterion=-1){
-
+  cout << "Calculating overlap between boxes " << endl;
   // overlap is invalid in the beginning
   double o = -1;
 
@@ -494,7 +497,7 @@ EVALUATE CLASS-WISE
 =======================================================================*/
 
 bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector< vector<tGroundtruth> > &groundtruth,const vector< vector<tDetection> > &detections, bool compute_aos, vector<double> &precision, vector<double> &aos, DIFFICULTY difficulty) {
-
+  std::cout << "Evaluating class --  (KittiObjective)" << std::endl;
   // init
   int32_t n_gt=0;                                     // total no. of gt (denominator of recall)
   vector<double> v, thresholds;                       // detection scores, evaluated for recall discretization
@@ -641,6 +644,7 @@ inline bool exists_test0 (const std::string& name) {
 bool eval(string path, string path_to_gt, Mail* mail){
 
   // set some global parameters
+  cout << "Initializing global variables ... " << endl;
   initGlobals();
 
   // ground truth and result directories
@@ -650,7 +654,7 @@ bool eval(string path, string path_to_gt, Mail* mail){
 
   // create output directories
   system(("mkdir " + plot_dir).c_str());
-
+  cout << "Output directories creates (mkdir " << plot_dir << ")" << endl;
   // hold detections and ground truth in memory
   vector< vector<tGroundtruth> > groundtruth;
   vector< vector<tDetection> >   detections;
@@ -660,7 +664,7 @@ bool eval(string path, string path_to_gt, Mail* mail){
   bool compute_aos=false, eval_car=true, eval_pedestrian=false, eval_cyclist=false;
 
   // for all images read groundtruth and detections
-  mail->msg("Loading detections...");
+  cout << "Loading detections..." << endl;
   for (int32_t i=0; i<N_MAXIMAGES; i++) {
 
     // file name
@@ -671,7 +675,7 @@ bool eval(string path, string path_to_gt, Mail* mail){
       continue;
     }
 
-
+    
     // read ground truth and result poses
     bool gt_success,det_success;
     vector<tGroundtruth> gt   = loadGroundtruth(gt_dir + "/" + file_name,gt_success);
@@ -681,21 +685,22 @@ bool eval(string path, string path_to_gt, Mail* mail){
 
     // check for errors
     if (!gt_success) {
-      mail->msg("ERROR: Couldn't read: %s of ground truth. Please write me an email!", file_name);
+      cout << "ERROR: Couldn't read:" << file_name << " of ground truth." << endl;
       return false;
     }
     if (!det_success) {
-      mail->msg("ERROR: Couldn't read: %s", file_name);
+      cout << "ERROR: Couldn't read:" << file_name << endl;
       return false;
     }
   }
-  mail->msg("  done.");
+  cout << "Done. " << endl;
 
   // holds pointers for result files
   FILE *fp_det=0, *fp_ori=0;
 
   // eval cars
   if(eval_car){
+    cout << "Evaluating cars..." << endl;
     fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[CAR] + "_detection.txt").c_str(),"w");
     if(compute_aos)
       fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[CAR] + "_orientation.txt").c_str(),"w");
@@ -716,6 +721,7 @@ bool eval(string path, string path_to_gt, Mail* mail){
 
   // eval pedestrians
   if(eval_pedestrian){
+    cout << "Evaluating pedestrians..." << endl;
     fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[PEDESTRIAN] + "_detection.txt").c_str(),"w");
     if(compute_aos)
       fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[PEDESTRIAN] + "_orientation.txt").c_str(),"w");
@@ -723,11 +729,12 @@ bool eval(string path, string path_to_gt, Mail* mail){
     if(   !eval_class(fp_det,fp_ori,PEDESTRIAN,groundtruth,detections,compute_aos,precision[0],aos[0],EASY)
        || !eval_class(fp_det,fp_ori,PEDESTRIAN,groundtruth,detections,compute_aos,precision[1],aos[1],MODERATE)
        || !eval_class(fp_det,fp_ori,PEDESTRIAN,groundtruth,detections,compute_aos,precision[2],aos[2],HARD)){
-      mail->msg("Pedestrian evaluation failed.");
+      cout << "Pedestrian evaluation failed." << endl;
       return false;
     }
     fclose(fp_det);
     saveAndPlotPlots(plot_dir,CLASS_NAMES[PEDESTRIAN] + "_detection",CLASS_NAMES[PEDESTRIAN],precision,0);
+    cout << "Finished saving plots with pedestrians" << endl;
     if(compute_aos){
       fclose(fp_ori);
       saveAndPlotPlots(plot_dir,CLASS_NAMES[PEDESTRIAN] + "_orientation",CLASS_NAMES[PEDESTRIAN],aos,1);
@@ -736,6 +743,7 @@ bool eval(string path, string path_to_gt, Mail* mail){
 
   // eval cyclists
   if(eval_cyclist){
+    cout << "Evaluating cyclists..." << endl;
     fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[CYCLIST]  + "_detection.txt").c_str(),"w");
     if(compute_aos)
       fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[CYCLIST] + "_orientation.txt").c_str(),"w");
@@ -743,11 +751,12 @@ bool eval(string path, string path_to_gt, Mail* mail){
     if(   !eval_class(fp_det,fp_ori,CYCLIST,groundtruth,detections,compute_aos,precision[0],aos[0],EASY)
        || !eval_class(fp_det,fp_ori,CYCLIST,groundtruth,detections,compute_aos,precision[1],aos[1],MODERATE)
        || !eval_class(fp_det,fp_ori,CYCLIST,groundtruth,detections,compute_aos,precision[2],aos[2],HARD)){
-      mail->msg("Cyclist evaluation failed.");
+      cout << "Cyclist evaluation failed." << endl;
       return false;
     }
     fclose(fp_det);
     saveAndPlotPlots(plot_dir,CLASS_NAMES[CYCLIST] + "_detection",CLASS_NAMES[CYCLIST],precision,0);
+    cout << "Finished saving plots with cyclists" << endl;
     if(compute_aos){
       fclose(fp_ori);
       saveAndPlotPlots(plot_dir,CLASS_NAMES[CYCLIST] + "_orientation",CLASS_NAMES[CYCLIST],aos,1);
@@ -767,8 +776,9 @@ int32_t main (int32_t argc,char *argv[]) {
     return 1;
   }
 
-
+  cout << "Running main of cpp evaluation" << endl;
   // read arguments
+  cout << "Reading arguments" << endl;
   string path_to_prediction = argv[1];
   string path_to_gt = argv[2];
 
@@ -776,12 +786,10 @@ int32_t main (int32_t argc,char *argv[]) {
   Mail *mail;
   if (argc==4) mail = new Mail(argv[3]);
   else         mail = new Mail();
-  mail->msg("Thank you for participating in our evaluation!");
-  mail->msg("Starting to evaluate Results found in: %s",
-             path_to_prediction.c_str());
-
+  cout << "Starting to evaluate results - found in " << path_to_prediction.c_str() << endl;
   // run evaluation
   if (eval(path_to_prediction,path_to_gt,mail)) {
+    cout << "Evaluation sucessful! " << endl;
     mail->msg("Evaluation Succesfull. Results can be found:");
     mail->msg("%s /results  ", path_to_prediction.c_str());
     delete mail;
