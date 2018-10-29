@@ -45,8 +45,8 @@ void initGlobals () {
   CLASS_NAMES.push_back("car");
   CLASS_NAMES.push_back("pedestrian");
   CLASS_NAMES.push_back("cyclist");
-  CLASS_NAMES.push_back("traffic light");
-  CLASS_NAMES.push_back("traffic sign");
+  CLASS_NAMES.push_back("traffic_light");
+  CLASS_NAMES.push_back("traffic_sign");
   CLASS_NAMES.push_back("truck");
 }
 
@@ -105,9 +105,11 @@ struct tDetection {
 /*=======================================================================
 FUNCTIONS TO LOAD DETECTION AND GROUND TRUTH DATA ONCE, SAVE RESULTS
 =======================================================================*/
-
+// TODO: Expand this function to include all classes in bdd100k
 vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eval_car, bool &eval_pedestrian, bool &eval_cyclist, bool &success) {
-
+  /* Loads the detections from the model from the given filename.
+     Returns a vector of detections where each element is of type tDetection struct.  
+   */ 
   cout << "Loading detections " << endl;
   // holds all detections (ignored detections are indicated by an index vector
   vector<tDetection> detections;
@@ -148,6 +150,9 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
 }
 
 vector<tGroundtruth> loadGroundtruth(string file_name,bool &success) {
+  /* Attempts to load all ground truths (kitti-formatted bboxes) from the given filename 
+     and returns a vector of groundtruths where each element is a tGroundTruth struct
+  */ 
 
   // holds all ground truth (ignored ground truth is indicated by an index vector
   vector<tGroundtruth> groundtruth;
@@ -178,6 +183,7 @@ vector<tGroundtruth> loadGroundtruth(string file_name,bool &success) {
 }
 
 void saveStats (const vector<double> &precision, const vector<double> &aos, FILE *fp_det, FILE *fp_ori) {
+  /* Writes the precision vector to fp_det, and aos-vector to fp_ori if they are non-empty */ 
   cout << "Saving stats to file " << endl;
   // save precision to file
   if(precision.empty()){
@@ -279,6 +285,9 @@ vector<double> getThresholds(vector<double> &v, double n_groundtruth){
 }
 
 void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vector<tDetection> &det, vector<int32_t> &ignored_gt, vector<tGroundtruth> &dc, vector<int32_t> &ignored_det, int32_t &n_gt, DIFFICULTY difficulty){
+  /* Iterates through the ground truths (gt) and ignores all ground truths that are too occluded (defined by MAX_OCCLUSION[difficulty], MAX_TRUNCATION and MIN_HEIGHT)
+     Then, it creates a vector (ignored_gt) that is 0 on index i if gt[i] should not be ignored. Else, it is ignored.
+   */ 
   cout << "Clean data called, current class : " << current_class << endl;
   cout << "Current class string: " << CLASS_NAMES[current_class].c_str() << endl;
   // extract ground truth bounding boxes for current evaluation class
@@ -510,7 +519,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
 /*=======================================================================
 EVALUATE CLASS-WISE
 =======================================================================*/
-
+// TODO: Change the variable N_TESTIMAGES to the correct number for bdd100k
 bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector< vector<tGroundtruth> > &groundtruth,const vector< vector<tDetection> > &detections, bool compute_aos, vector<double> &precision, vector<double> &aos, DIFFICULTY difficulty) {
   std::cout << "Evaluating class --  (KittiObjective)" << std::endl;
   // init
@@ -674,10 +683,6 @@ bool eval(string path, string path_to_gt){
   // Get all filenames from gt
   // This is necessary since KittiBox only uses numbers as filenames, but we have IDs
   namespace fs = std::experimental::filesystem;
-  
-     
-
-
   // set some global parameters
   cout << "Initializing global variables ... " << endl;
   initGlobals();
@@ -704,6 +709,7 @@ bool eval(string path, string path_to_gt){
     //cout << "\t Loading detection no " << i << endl;
     // file name
     string full_file_name = file_path.path().string();
+    // Since the file names are given as absolute paths, we need to find the last folder separator and ignore everything before this.
     string file_name(full_file_name.substr(full_file_name.rfind("/") + 1));
     if(!exists_test0(result_dir + "/" + file_name) || ! has_suffix(file_name, ".txt")) {
       cout << "\t" << result_dir + "/" + file_name << " does not exist" << endl;
@@ -801,6 +807,8 @@ bool eval(string path, string path_to_gt){
       saveAndPlotPlots(plot_dir,CLASS_NAMES[CYCLIST] + "_orientation",CLASS_NAMES[CYCLIST],aos,1);
     }
   }
+  
+  // TODO: Add evaluation for all classes in bdd100k here
 
   // success
   return true;
@@ -825,15 +833,13 @@ int32_t main (int32_t argc,char *argv[]) {
   // init notification mail
   cout << "Starting to evaluate results - found in " << path_to_prediction.c_str() << endl;
   // run evaluation
-  if (eval(path_to_prediction,path_to_gt)) {
+  if (eval(path_to_prediction, path_to_gt)) {
     cout << "Evaluation sucessful! " << endl;
     return 0;
   } else {
     cout << "An error occured while processing your results." << endl;
     return 1;
   }
-
-  // send mail and exit
 
   return 0;
 }
