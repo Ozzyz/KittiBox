@@ -24,7 +24,7 @@ import random
 from utils.annolist import AnnotationLib as AnnLib
 
 import logging
-
+import sys
 
 def make_val_dir(hypes, validation=True):
     if validation:
@@ -69,15 +69,8 @@ def evaluate(hypes, sess, image_pl, softmax):
     logging.info("Trying to call kitti evaluation code - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
     try:
         cmd = [eval_cmd, val_path, label_dir]
-        popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-        print(popen.stdout.read())
-        print("Reading from subprocess stdout: ", popen.stdout.readline())
-        for stdout_line in iter(popen.stdout.readline, ""):
-            print(stdout_line) 
-        popen.stdout.close()
-        return_code = popen.wait()
-        if return_code:
-            raise subprocess.CalledProcessError(return_code, cmd)
+        popen = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
+        
     except OSError as error:
         logging.warning("Failed to run run kitti evaluation code.")
         logging.warning("Please run: `cd submodules/KittiObjective2/ && make`")
@@ -92,7 +85,7 @@ def evaluate(hypes, sess, image_pl, softmax):
         return eval_list, image_list
 
     res_file = os.path.join(val_path, "stats_car_detection.txt")
-
+    logging.info("Trying to evaluate stats file {}".format(res_file))
     with open(res_file) as f:
         for mode in ['easy', 'medium', 'hard']:
             line = f.readline()
@@ -105,7 +98,7 @@ def evaluate(hypes, sess, image_pl, softmax):
 
     val_path = make_val_dir(hypes, False)
     
-    subprocess.check_call([eval_cmd, val_path, label_dir], stdout=subprocess.STDOUT)
+    subprocess.check_call([eval_cmd, val_path, label_dir], stdout=sys.stdout)
     res_file = os.path.join(val_path, "stats_car_detection.txt")
 
     with open(res_file) as f:

@@ -128,7 +128,6 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
                    &trash,      &trash,    &trash,    &d.thresh )==16) {
       d.box.type = str;
       detections.push_back(d);
-      cout << "Pushed back detection type" << d.box.type << endl;
       // orientation=-10 is invalid, AOS is not evaluated if at least one orientation is invalid
       if(d.box.alpha==-10)
         compute_aos = false;
@@ -181,17 +180,23 @@ vector<tGroundtruth> loadGroundtruth(string file_name,bool &success) {
 void saveStats (const vector<double> &precision, const vector<double> &aos, FILE *fp_det, FILE *fp_ori) {
   cout << "Saving stats to file " << endl;
   // save precision to file
-  if(precision.empty())
+  if(precision.empty()){
+    cout << "Precision vector empty -- exiting. " << endl;
     return;
-  for (int32_t i=0; i<precision.size(); i++)
-    fprintf(fp_det,"%f ",precision[i]);
+  }
+  for (int32_t i=0; i<precision.size(); i++){
+     cout << "Writing " << precision[i] << " to fp_det" << endl;
+     fprintf(fp_det,"%f ",precision[i]);
+  }
   fprintf(fp_det,"\n");
 
   // save orientation similarity, only if there were no invalid orientation entries in submission (alpha=-10)
   if(aos.empty())
     return;
-  for (int32_t i=0; i<aos.size(); i++)
+  for (int32_t i=0; i<aos.size(); i++){
+    cout << "Writing " << aos[i] << " to fp_ori" << endl;
     fprintf(fp_ori,"%f ",aos[i]);
+  }
   fprintf(fp_ori,"\n");
 }
 
@@ -202,7 +207,7 @@ EVALUATION HELPER FUNCTIONS
 // criterion defines whether the overlap is computed with respect to both areas (ground truth and detection)
 // or with respect to box a or b (detection and "dontcare" areas)
 inline double boxoverlap(tBox a, tBox b, int32_t criterion=-1){
-  cout << "Calculating overlap between boxes " << endl;
+  cout << "\tCalculating overlap between boxes " << endl;
   // overlap is invalid in the beginning
   double o = -1;
 
@@ -239,7 +244,7 @@ inline double boxoverlap(tBox a, tBox b, int32_t criterion=-1){
 
 vector<double> getThresholds(vector<double> &v, double n_groundtruth){
 
-  cout << "Computed threshold" << endl;
+  cout << "\tComputed threshold" << endl;
   // holds scores needed to compute N_SAMPLE_PTS recall values
   vector<double> t;
 
@@ -275,10 +280,10 @@ vector<double> getThresholds(vector<double> &v, double n_groundtruth){
 
 void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vector<tDetection> &det, vector<int32_t> &ignored_gt, vector<tGroundtruth> &dc, vector<int32_t> &ignored_det, int32_t &n_gt, DIFFICULTY difficulty){
   cout << "Clean data called, current class : " << current_class << endl;
+  cout << "Current class string: " << CLASS_NAMES[current_class].c_str() << endl;
   // extract ground truth bounding boxes for current evaluation class
   cout << "GT size " << gt.size() << endl;
     for (int32_t i=0;i<gt.size(); i++){
-    cout << "cleanData: Extracting ground truths" << endl;
     // only bounding boxes with a minimum height are used for evaluation
     double height = gt[i].box.y2 - gt[i].box.y1;
 
@@ -361,7 +366,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
     for(int32_t i=0; i<det.size(); i++)
       if(det[i].thresh<thresh)
         ignored_threshold[i] = true;
-
+  cout << "Evaluating all (" << gt.size() << ") ground thruth boxes" << endl;
   // evaluate all ground truth boxes
   for(int32_t i=0; i<gt.size(); i++){
 
@@ -498,6 +503,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
         stat.similarity = -1;
     }
   }
+  cout << "Call to computeStatistics finished" << endl;
   return stat;
 }
 
@@ -538,17 +544,18 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
 
   // get scores that must be evaluated for recall discretization
   thresholds = getThresholds(v, n_gt);
-
+  cout << "Successfully called getThresholds" << endl;
   // compute TP,FP,FN for relevant scores
   vector<tPrData> pr;
   pr.assign(thresholds.size(),tPrData());
+  // FIXME: This should iterate over all images in dir
   for (int32_t i=0; i<N_TESTIMAGES; i++){
 
     // for all scores/recall thresholds do:
     for(int32_t t=0; t<thresholds.size(); t++){
       tPrData tmp = tPrData();
       tmp = computeStatistics(current_class, groundtruth[i], detections[i], dontcare[i],
-                              ignored_gt[i], ignored_det[i], true, compute_aos, thresholds[t], t==38);
+                              ignored_gt[i], ignored_det[i], true, compute_aos, thresholds[t], t==38); // TODO: Find out why the fuck this is called with t==38
 
       // add no. of TP, FP, FN, AOS for current frame to total evaluation for current threshold
       pr[t].tp += tmp.tp;
@@ -572,6 +579,7 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
     if(compute_aos)
       aos[i] = pr[i].similarity/(double)(pr[i].tp + pr[i].fp);
   }
+  cout << "Sucessfully computed recall, precision and AOS" << endl;
 
   // filter precision and AOS using max_{i..end}(precision)
   for (int32_t i=0; i<thresholds.size(); i++){
@@ -579,9 +587,11 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
     if(compute_aos)
       aos[i] = *max_element(aos.begin()+i, aos.end());
   }
+  cout << "Sucessfully filtered precision and AOS" << endl;
 
   // save statisics and finish with success
   saveStats(precision, aos, fp_det, fp_ori);
+  cout << "Sucessfully called saveStats" << endl;
 	return true;
 }
 
@@ -654,6 +664,11 @@ inline bool exists_test0 (const std::string& name) {
 #include <fstream>
 #include <experimental/filesystem>
 
+bool has_suffix(const std::string &str, const std::string &suffix)
+{
+    return str.size() >= suffix.size() &&
+           str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
 
 bool eval(string path, string path_to_gt){
   // Get all filenames from gt
@@ -690,7 +705,7 @@ bool eval(string path, string path_to_gt){
     // file name
     string full_file_name = file_path.path().string();
     string file_name(full_file_name.substr(full_file_name.rfind("/") + 1));
-    if(!exists_test0(result_dir + "/" + file_name)) {
+    if(!exists_test0(result_dir + "/" + file_name) || ! has_suffix(file_name, ".txt")) {
       cout << "\t" << result_dir + "/" + file_name << " does not exist" << endl;
       continue;
     }
@@ -700,9 +715,7 @@ bool eval(string path, string path_to_gt){
     bool gt_success,det_success;
     cout << "\t eval(): Trying to load ground truths " << endl;
     vector<tGroundtruth> gt   = loadGroundtruth(gt_dir + "/" + file_name,gt_success);
-    cout << "eval(): Sucessfully loaded groundTruths for " << gt_dir + "/" + file_name <<  endl;
     vector<tDetection>   det  = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_pedestrian, eval_cyclist,det_success);
-    cout << "eval(): Sucessfully loaded detections for " << result_dir + "/" + file_name << endl;
     groundtruth.push_back(gt);
     detections.push_back(det);
 
@@ -724,11 +737,10 @@ bool eval(string path, string path_to_gt){
   // eval cars
   if(eval_car){
     cout << "Evaluating cars..." << endl;
-    cout << "Trying to open " << result_dir + "/stats_" + CLASS_NAMES[CAR] + "_detection.txt" << endl;
+    cout << "fp_det:  " << result_dir + "/stats_" + CLASS_NAMES[CAR] + "_detection.txt" << endl;
     fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[CAR] + "_detection.txt").c_str(),"w");
-    cout << "	Succesfully opened" << endl;
     if(compute_aos)
-      cout << "Computing AOS" << endl;
+      cout << "fp_ori: " << result_dir + "/stats_" + CLASS_NAMES[CAR] + "_orientation.txt" << endl;
       fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[CAR] + "_orientation.txt").c_str(),"w");
     vector<double> precision[3], aos[3];
     if(   !eval_class(fp_det,fp_ori,CAR,groundtruth,detections,compute_aos,precision[0],aos[0],EASY)
