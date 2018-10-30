@@ -46,7 +46,7 @@ def make_img_dir(hypes):
 def write_rects(rects, filename):
     with open(filename, 'w') as f:
         for rect in rects:
-            string = "Car 0 1 0 %f %f %f %f 0 0 0 0 0 0 0 %f" % \
+            string = "car 0 1 0 %f %f %f %f 0 0 0 0 0 0 0 %f" % \
                 (rect.x1, rect.y1, rect.x2, rect.y2, rect.score)
             print(string, file=f)
 
@@ -89,21 +89,30 @@ def evaluate(hypes, sess, image_pl, softmax):
     with open(res_file) as f:
         for mode in ['easy', 'medium', 'hard']:
             line = f.readline()
+            logging.info("Reading line: {}".format(line))
             result = np.array(line.rstrip().split(" ")).astype(float)
             mean = np.mean(result)
             eval_list.append(("val   " + mode, mean))
 
     pred_annolist, image_list2, dt, dt2 = get_results(
         hypes, sess, image_pl, softmax, False)
-
+    logging.info(hypes)
     val_path = make_val_dir(hypes, False)
+    label_dir = make_val_dir(hypes, True) # TODO: Check if this actually works as intended
+    cmd = [eval_cmd, val_path, label_dir]
+    logging.info("Trying to call kitti evaluation code (pt2) - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
+    try:
+        popen = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
+    except OSError as error:
+        logging.warning("Failed to run second call to kitti evaluation code")
     
-    subprocess.check_call([eval_cmd, val_path, label_dir], stdout=sys.stdout)
     res_file = os.path.join(val_path, "stats_car_detection.txt")
-
+    
     with open(res_file) as f:
+        logging.info("KittiSeg eval: Trying to load res file: {}".format(res_file)) 
         for mode in ['easy', 'medium', 'hard']:
             line = f.readline()
+            logging.info("Reading line: {}".format(line))
             result = np.array(line.rstrip().split(" ")).astype(float)
             mean = np.mean(result)
             eval_list.append(("train   " + mode, mean))
