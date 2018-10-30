@@ -22,7 +22,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
 
 sys.path.insert(1, 'incl')
 
-# Please set kitti_data_url to the download link for the Kitti ALL_DATA.
+# Please set kitti_data_url to the download link for the Kitti DATASET.
 #
 # You can obtain by going to this website:
 # http://www.cvlibs.net/download.php?file=data_road.zip
@@ -38,7 +38,7 @@ def get_pathes():
     """
     Get location of `data_dir` and `run_dir'.
 
-    Defaut is ./ALL_DATA and ./RUNS.
+    Defaut is ./DATASET and ./RUNS.
     Alternativly they can be set by the environoment variabels
     'TV_DIR_ALL_DATA' and 'TV_DIR_RUNS'.
     """
@@ -46,7 +46,7 @@ def get_pathes():
     if 'TV_DIR_ALL_DATA' in os.environ:
         data_dir = os.path.join(['hypes'], os.environ['TV_DIR_ALL_DATA'])
     else:
-        data_dir = "ALL_DATA"
+        data_dir = "DATASET"
 
     if 'TV_DIR_RUNS' in os.environ:
         run_dir = os.path.join(['hypes'], os.environ['TV_DIR_ALL_DATA'])
@@ -94,7 +94,7 @@ def main():
     if not os.path.exists(kitti_dec_dir):
         os.makedirs(kitti_dec_dir)
 
-    # Download VGG ALL_DATA
+    # Download VGG DATASET
     if not os.path.exists(vgg_weights):
         download_command = "wget {} -P {}".format(vgg_url, data_dir)
         logging.info("Downloading VGG weights.")
@@ -106,7 +106,7 @@ def main():
     kitti_dec_zip = os.path.join(kitti_dec_dir, 'data_object_image_2.zip')
     kitti_label_zip = os.path.join(kitti_dec_dir, "data_object_label_2.zip")
 
-    # Download KITTI ALL_DATA
+    # Download KITTI DATASET
     if not os.path.exists(kitti_dec_zip):
         if kitti_data_url == '':
             logging.error("Data URL for Kitti Data not provided.")
@@ -136,7 +136,7 @@ def main():
                                        os.path.basename(kitti_label_zip))
         download(kitti_label_url, kitti_dec_dir)
 
-    # Extract and prepare KITTI ALL_DATA
+    # Extract and prepare KITTI DATASET
     logging.info("Extracting kitti_road data.")
     zipfile.ZipFile(kitti_dec_zip, 'r').extractall(kitti_dec_dir)
     zipfile.ZipFile(kitti_label_zip, 'r').extractall(kitti_dec_dir)

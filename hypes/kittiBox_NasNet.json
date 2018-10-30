@@ -1,7 +1,7 @@
 {
     "model": {
     "input_file": "../inputs/kitti_input.py",
-    "architecture_file" : "../../../encoder/nasnet.py",
+    "architecture_file" : "../../../encoder/nasnet/pnasnet_modified.py",
     "objective_file" : "../decoder/fastBox.py",
     "optimizer_file" : "../optimizer/generic_optimizer.py",
     "evaluator_file" : "../evals/kitti_eval.py"

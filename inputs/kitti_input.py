@@ -246,8 +246,8 @@ def start_enqueuing_threads(hypes, q, phase, sess):
 
 
 def test_new_kitti():
-    idlfile = "/home/mifs/mttt2/cvfs/ALL_DATA/KittiBox/train_3.idl"
-    kitti_txt = "/home/mifs/mttt2/cvfs/ALL_DATA/KittiBox/train.txt"
+    idlfile = "/home/mifs/mttt2/cvfs/DATASET/KittiBox/train_3.idl"
+    kitti_txt = "/home/mifs/mttt2/cvfs/DATASET/KittiBox/train.txt"
 
     with open('hypes/kittiBox.json', 'r') as f:
         logging.info("f: %s", f)

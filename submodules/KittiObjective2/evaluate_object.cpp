@@ -48,7 +48,7 @@ void initGlobals () {
 }
 
 /*=======================================================================
-ALL_DATA TYPES FOR EVALUATION
+DATASET TYPES FOR EVALUATION
 =======================================================================*/
 
 // holding data needed for precision-recall and precision-aos
@@ -100,7 +100,7 @@ struct tDetection {
 };
 
 /*=======================================================================
-FUNCTIONS TO LOAD DETECTION AND GROUND TRUTH ALL_DATA ONCE, SAVE RESULTS
+FUNCTIONS TO LOAD DETECTION AND GROUND TRUTH DATASET ONCE, SAVE RESULTS
 =======================================================================*/
 
 vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eval_car, bool &eval_pedestrian, bool &eval_cyclist, bool &success) {

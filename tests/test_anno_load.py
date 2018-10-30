@@ -280,8 +280,8 @@ def _load_data_gen(hypes, phase, jitter):
 
 
 def test_new_kitti():
-    idlfile = "/home/mifs/mttt2/cvfs/ALL_DATA/KittiBox/train_3.idl"
-    kitti_txt = "/home/mifs/mttt2/cvfs/ALL_DATA/KittiBox/train.txt"
+    idlfile = "/home/mifs/mttt2/cvfs/DATASET/KittiBox/train_3.idl"
+    kitti_txt = "/home/mifs/mttt2/cvfs/DATASET/KittiBox/train.txt"
 
     with open('../hypes/kittiBox.json', 'r') as f:
         logging.info("f: %s", f)
@@ -366,8 +366,8 @@ def draw_encoded(image, confs, mask=None, rects=None, cell_size=32):
 
 
 def draw_kitti_jitter():
-    idlfile = "/home/mifs/mttt2/cvfs/ALL_DATA/KittiBox/train_3.idl"
-    kitti_txt = "/home/mifs/mttt2/cvfs/ALL_DATA/KittiBox/train.txt"
+    idlfile = "/home/mifs/mttt2/cvfs/DATASET/KittiBox/train_3.idl"
+    kitti_txt = "/home/mifs/mttt2/cvfs/DATASET/KittiBox/train.txt"
 
     with open('../hypes/kittiBox.json', 'r') as f:
         logging.info("f: %s", f)
@@ -387,8 +387,8 @@ def draw_kitti_jitter():
 
 
 def draw_idl():
-    idlfile = "/home/mifs/mttt2/cvfs/ALL_DATA/KittiBox/train_3.idl"
-    kitti_txt = "/home/mifs/mttt2/cvfs/ALL_DATA/KittiBox/train.txt"
+    idlfile = "/home/mifs/mttt2/cvfs/DATASET/KittiBox/train_3.idl"
+    kitti_txt = "/home/mifs/mttt2/cvfs/DATASET/KittiBox/train.txt"
 
     with open('../hypes/kittiBox.json', 'r') as f:
         logging.info("f: %s", f)
@@ -408,8 +408,8 @@ def draw_idl():
 
 
 def draw_both():
-    idlfile = "/home/mifs/mttt2/cvfs/ALL_DATA/KittiBox/train_3.idl"
-    kitti_txt = "/home/mifs/mttt2/cvfs/ALL_DATA/KittiBox/train.txt"
+    idlfile = "/home/mifs/mttt2/cvfs/DATASET/KittiBox/train_3.idl"
+    kitti_txt = "/home/mifs/mttt2/cvfs/DATASET/KittiBox/train.txt"
 
     with open('../hypes/kittiBox.json', 'r') as f:
         logging.info("f: %s", f)
