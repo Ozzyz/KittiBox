@@ -113,6 +113,8 @@ def evaluate(hypes, sess, image_pl, softmax):
         logging.info("KittiBox eval: Trying to load res file: {}".format(res_file)) 
         for mode in ['easy', 'medium', 'hard']:
             line = f.readline()
+            if not line:
+                continue
             logging.info("Reading line: {}".format(line))
             result = np.array(line.rstrip().split(" ")).astype(float)
             mean = np.mean(result)
@@ -126,7 +128,7 @@ def evaluate(hypes, sess, image_pl, softmax):
 
 
 def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
-
+    logging.info("get_results(): Called with image pl {} and validation={}".format(image_pl, validation))
     if hypes['use_rezoom']:
         pred_boxes = decoded_logits['pred_boxes_new']
     else:
@@ -152,17 +154,23 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
     pred_annolist = AnnLib.AnnoList()
 
     files = [line.rstrip() for line in open(kitti_txt)]
-    base_path = os.path.realpath(os.path.dirname(kitti_txt))
-
+    #base_path = os.path.realpath(os.path.dirname(kitti_txt))
+    base_path = "/notebooks"
+    # In order to evaluate fps after each run, define variables in front,
+    # and then assign them within the loop
+    feed = None
+    logging.info("bdd_eval: Trying to read files {}".format(files)) 
     for i, file in enumerate(files):
         image_file = file.split(" ")[0]
         if not validation and random.random() > 0.2:
             continue
-        #image_file = os.path.join(base_path, image_file)
+        
+        image_file = os.path.join(base_path, image_file)
         orig_img = scp.misc.imread(image_file)[:, :, :3]
         img = scp.misc.imresize(orig_img, (hypes["image_height"],
                                            hypes["image_width"]),
                                 interp='cubic')
+        logging.info("Trying to read image with path: {}".format(image_file))
         feed = {image_pl: img}
         (np_pred_boxes, np_pred_confidences) = sess.run([pred_boxes,
                                                          pred_confidences],

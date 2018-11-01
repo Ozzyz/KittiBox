@@ -26,8 +26,8 @@ int32_t N_TESTIMAGES = 10;
 enum DIFFICULTY{EASY=0, MODERATE=1, HARD=2};
 
 // evaluation parameter
-const int32_t MIN_HEIGHT[6]     = {40, 25, 25, 10, 10, 40};     // minimum height for evaluated groundtruth/detections
-const int32_t MAX_OCCLUSION[6]  = {0, 1, 2, 1, 1, 1};        // maximum occlusion level of the groundtruth used for evaluation
+const int32_t MIN_HEIGHT[6]     = {80, 50, 50, 20, 20, 80};     // minimum height for evaluated groundtruth/detections
+const int32_t MAX_OCCLUSION[6]  = {1, 1, 2, 1, 1, 1};        // maximum occlusion level of the groundtruth used for evaluation
 const double  MAX_TRUNCATION[6] = {0.15, 0.3, 0.5, 0.2, 0.2, 0.2}; // maximum truncation level of the groundtruth used for evaluation
 
 // evaluated object classes
@@ -35,7 +35,7 @@ enum CLASSES{CAR=0, PEDESTRIAN=1, CYCLIST=2, TRAFFIC_LIGHT=3, TRAFFIC_SIGN=4, TR
 
 // parameters varying per class
 vector<string> CLASS_NAMES;
-const double   MIN_OVERLAP[6] = {0.7, 0.5, 0.5, 0.5, 0.5, 0.5};                  // the minimum overlap required for evaluation
+const double   MIN_OVERLAP[6] = {0.005, 0.5, 0.5, 0.5, 0.5, 0.5};                  // the minimum overlap required for evaluation
 
 // no. of recall steps that should be evaluated (discretized)
 const double N_SAMPLE_PTS = 41;
@@ -79,6 +79,7 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
     if(num_args == 16){
       d.box.type = str;
       //cout << "loadDetections: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << d.box.x1 << " "<< d.box.y1 << " " << d.box.x2 << " "<< d.box.y2 << endl;
+      //cout << "SUCESS:!!! Values read: " << str << ", alpha, dbox (x1, y1, x2, y2), tresh " << d.box.alpha << d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << d.thresh <<  endl;
       detections.push_back(d);
       // orientation=-10 is invalid, AOS is not evaluated if at least one orientation is invalid
       if(d.box.alpha==-10)
@@ -94,7 +95,7 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
     }else{
       cout << "\t\t\t loadDetections: Could not load detections from fscanf of file " << file_name << ", are you sure it is formatted correctly? (16 values per line)" <<  endl;
      
-      cout << "Values read: " << str << ", dbox (x1, y1, x2, y2) " << d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << endl;
+      cout << "FAIL! Values read: " << str << ", alpha, dbox (x1, y1, x2, y2), tresh " << d.box.alpha << d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << d.thresh <<  endl;
     }
   }
   fclose(fp);
@@ -129,12 +130,12 @@ vector<tGroundtruth> loadGroundtruth(string file_name,bool &success) {
                    &trash,      &trash,        &trash,       &trash, 
                    &trash,      &trash,        &trash );
     if(num_args == 15){
+       cout << "Values read: " << str << ",alpha,  dbox (x1, y1, x2, y2) " << g.box.alpha <<  g.box.x1 << g.box.y1 << g.box.x2 << g.box.y2 << endl;
       g.box.type = str;
       //cout << "loadGroundTruths: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << g.box.x1 << " "<< g.box.y1 << " " << g.box.x2 << " "<< g.box.y2 << endl;
       groundtruth.push_back(g);
     }else{
       cout << "Could not load ground truths in fscanf of file " << file_name << ", are you sure it is formatted correctly? (15 values per line) " <<  endl; 
-      cout << "Values read: " << str << ", dbox (x1, y1, x2, y2) " << g.box.x1 << g.box.y1 << g.box.x2 << g.box.y2 << endl;
     }
   }
   fclose(fp);
@@ -151,10 +152,12 @@ void saveStats (const vector<double> &precision, const vector<double> &aos, FILE
     cout << "Precision vector empty -- exiting. " << endl;
     return;
   }
+  cout << "Writing precision elements: ";
   for (int32_t i=0; i<precision.size(); i++){
-     cout << "Writing precision element " << i << "  with value: " << precision[i] << " to fp_det" << endl;
+     cout << "," << precision[i];
      fprintf(fp_det,"%f ",precision[i]);
   }
+  cout << endl;
   fprintf(fp_det,"\n");
 
   // save orientation similarity, only if there were no invalid orientation entries in submission (alpha=-10)
@@ -330,16 +333,20 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
   vector<double> delta;            // holds angular difference for TPs (needed for AOS evaluation)
   vector<bool> assigned_detection; // holds wether a detection was assigned to a valid or ignored ground truth
   assigned_detection.assign(det.size(), false);
+  cout << "Assigning assigned_detection size: " << det.size() << endl;
   vector<bool> ignored_threshold;
   ignored_threshold.assign(det.size(), false); // holds detections with a threshold lower than thresh if FP are computed
 
   // detections with a low score are ignored for computing precision (needs FP)
-  if(compute_fp)
-    for(int32_t i=0; i<det.size(); i++)
+  if(compute_fp){
+    for(int32_t i=0; i<det.size(); i++){
+      cout << "Thresh of det: " << det[i].thresh << " thresh of computestatistics: " << thresh << endl;
       if(det[i].thresh<thresh)
         ignored_threshold[i] = true;
+    }
+  }
   // evaluate all ground truth boxes
-  cout << "computeStatistics: Entering iteration over all gts in vector" << endl;
+  cout << "computeStatistics: Entering iteration over all gts in vector (" << gt.size() << ")" <<  endl;
   for(int32_t i=0; i<gt.size(); i++){
 
     // this ground truth is not of the current or a neighboring class and therefore ignored
@@ -358,12 +365,15 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
     for(int32_t j=0; j<det.size(); j++){
 
       // detections not of the current class, already assigned or with a low threshold are ignored
-      if(ignored_det[j]==-1)
-        continue;
-      if(assigned_detection[j])
-        continue;
-      if(ignored_threshold[j])
-        continue;
+      if(ignored_det[j]==-1){
+        cout << "Skipping " << j << "  because of ignored det == -1" << endl;
+        continue;}
+      if(assigned_detection[j]){
+        cout << "Skipping " << j << " because of already assigned detection" << endl;
+        continue;}
+      if(ignored_threshold[j]){
+        //cout << "Skipping " << j << " because of ignored threshold" << endl;
+        continue;}
 
       // find the maximum score for the candidates and get idx of respective detection
       double overlap = boxoverlap(det[j].box, gt[i].box);
@@ -418,9 +428,9 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
   }
 
   // if FP are requested, consider stuff area
-  cout << "computeStatistics: Computing fp line 410" << endl;
   if(compute_fp){
 
+    cout << "computeStatistics: Computing fp line 410" << endl;
     // count fp
     for(int32_t i=0; i<det.size(); i++){
 
@@ -477,6 +487,9 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
     }
   }
   cout << "Call to computeStatistics finished" << endl;
+  cout << "Stat values: " <<endl;
+  cout << "\t\t stat FN: " << stat.fn << endl;
+  cout << "\t\t stat TP: " << stat.tp << endl;
   return stat;
 }
 
@@ -505,16 +518,20 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
     ignored_gt.push_back(i_gt);
     ignored_det.push_back(i_det);
     dontcare.push_back(dc);
-
+    cout << "Size of ignored gt: " << ignored_gt.size() << endl;
+    cout << "Size of ignored det: " << ignored_det.size() << endl;
+    cout << "Size of dontcare: " << dontcare.size() << endl;
     // compute statistics to get recall values
     tPrData pr_tmp = tPrData();
+    // FIXME: computeStatistics returns pr_tmp with v-variable of length 0
     pr_tmp = computeStatistics(current_class, groundtruth[i], detections[i], dc, i_gt, i_det, true);
     cout << "Successfully computed statistics " << endl;
     // add detection scores to vector over all images
+    cout << "Size of tp_tmp.v: " << pr_tmp.v.size() << endl;
     for(int32_t j=0; j<pr_tmp.v.size(); j++)
       v.push_back(pr_tmp.v[j]);
   }
-
+  cout << "Size of v-vector before thresholding: " << v.size() << endl;
   // get scores that must be evaluated for recall discretization
   thresholds = getThresholds(v, n_gt);
   cout << "Successfully called getThresholds" << endl;
@@ -794,6 +811,9 @@ int32_t main (int32_t argc,char *argv[]) {
     cout << "ARGC: " << argc;
     return 1;
   }
+  cout << "************************************************** ENTERING CPP EVAL CODE *******************";
+  cout << "*********************************************************************************************";
+  cout << "*********************************************************************************************"<<endl;
   cerr << "TESTING TESTING TESTING TESTING CERR " << endl;
   cout << "Running main of cpp evaluation" << endl;
   // read arguments
@@ -805,11 +825,12 @@ int32_t main (int32_t argc,char *argv[]) {
   // init notification mail
   cout << "Starting to evaluate results - found in " << path_to_prediction.c_str() << endl;
   // run evaluation
+  cout << "***************************************************** EXITING CPP EVAL CODE *******************" << endl;
   if (eval(path_to_prediction, path_to_gt)) {
-    cout << "Evaluation sucessful! " << endl;
+    cout << "CPP EVAL: Evaluation sucessful! " << endl;
     return 0;
   } else {
-    cout << "An error occured while processing your results." << endl;
+    cout << "CPP EVAL: An error occured while processing your results." << endl;
     return 1;
   }
 
