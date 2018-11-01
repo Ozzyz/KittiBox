@@ -44,6 +44,7 @@ def make_img_dir(hypes):
 
 
 def write_rects(rects, filename):
+    logging.info("Writing rects to file {}".format(filename))
     with open(filename, 'w') as f:
         for rect in rects:
             string = "car 0 1 0 %f %f %f %f 0 0 0 0 0 0 0 %f" % \
@@ -98,7 +99,7 @@ def evaluate(hypes, sess, image_pl, softmax):
         hypes, sess, image_pl, softmax, False)
     logging.info(hypes)
     val_path = make_val_dir(hypes, False)
-    label_dir = make_val_dir(hypes, True) # TODO: Check if this actually works as intended
+    #label_dir = make_val_dir(hypes, True) # TODO: Check if this actually works as intended
     cmd = [eval_cmd, val_path, label_dir]
     logging.info("Trying to call kitti evaluation code (pt2) - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
     try:
@@ -109,7 +110,7 @@ def evaluate(hypes, sess, image_pl, softmax):
     res_file = os.path.join(val_path, "stats_car_detection.txt")
     
     with open(res_file) as f:
-        logging.info("KittiSeg eval: Trying to load res file: {}".format(res_file)) 
+        logging.info("KittiBox eval: Trying to load res file: {}".format(res_file)) 
         for mode in ['easy', 'medium', 'hard']:
             line = f.readline()
             logging.info("Reading line: {}".format(line))
@@ -177,6 +178,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
         if validation and i % 15 == 0:
             image_name = os.path.basename(pred_anno.imageName)
             image_name = os.path.join(img_dir, image_name)
+            logging.info("Save image {} to file ".format(image_name))
             scp.misc.imsave(image_name, new_img)
 
         if validation:
@@ -186,7 +188,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
         image_name = os.path.basename(image_file)
         val_file_name = image_name.split('.')[0] + '.txt'
         val_file = os.path.join(val_dir, val_file_name)
-
+        logging.info("KittiBox: Full name of val file: {}".format(val_file))
         # write rects to file
 
         pred_anno.rects = rects
@@ -200,6 +202,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
 
         pred_annolist.append(pred_anno)
 
+    logging.info("Starting to evaluate fps of network")
     start_time = time.time()
     for i in xrange(100):
         (np_pred_boxes, np_pred_confidences) = sess.run([pred_boxes,

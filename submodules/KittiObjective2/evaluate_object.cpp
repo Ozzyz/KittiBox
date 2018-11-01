@@ -19,8 +19,8 @@ STATIC EVALUATION PARAMETERS
 
 // holds the number of test images on the server
 // FIXME: Change this to be the number of test images of bdd100k 
-int32_t N_MAXIMAGES = 5;
-int32_t N_TESTIMAGES = 5;
+int32_t N_MAXIMAGES = 10;
+int32_t N_TESTIMAGES = 10;
 
 // easy, moderate and hard evaluation level
 enum DIFFICULTY{EASY=0, MODERATE=1, HARD=2};
@@ -71,11 +71,12 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
     tDetection d;
     double trash;
     char str[255];
-    if (fscanf(fp, "%s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+    int num_args = fscanf(fp, "%s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
                    str, &trash,    &trash,    &d.box.alpha,
-                   &d.box.x1,   &d.box.y1, &d.box.x2, &d.box.y2,
-                   &trash,      &trash,    &trash,    &trash, 
-                   &trash,      &trash,    &trash,    &d.thresh )==16) {
+                   &d.box.x1,      &d.box.y1, &d.box.x2,   &d.box.y2,
+                   &trash,         &trash,    &trash,      &trash, 
+                   &trash,         &trash,    &trash,      &d.thresh);
+    if(num_args == 16){
       d.box.type = str;
       //cout << "loadDetections: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << d.box.x1 << " "<< d.box.y1 << " " << d.box.x2 << " "<< d.box.y2 << endl;
       detections.push_back(d);
@@ -90,6 +91,10 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
         eval_pedestrian = true;
       if(!eval_cyclist && !strcasecmp(d.box.type.c_str(), "cyclist"))
         eval_cyclist = true;
+    }else{
+      cout << "\t\t\t loadDetections: Could not load detections from fscanf of file " << file_name << ", are you sure it is formatted correctly? (16 values per line)" <<  endl;
+     
+      cout << "Values read: " << str << ", dbox (x1, y1, x2, y2) " << d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << endl;
     }
   }
   fclose(fp);
@@ -118,16 +123,18 @@ vector<tGroundtruth> loadGroundtruth(string file_name,bool &success) {
     double trash;
     char str[255];
     // The %s argument of fscanf expects a string without whitespaces.
-    if (fscanf(fp, "%s %lf %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+    int num_args = fscanf(fp, "%s %lf %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
                    str, &g.truncation, &g.occlusion, &g.box.alpha,
                    &g.box.x1,   &g.box.y1,     &g.box.x2,    &g.box.y2,
                    &trash,      &trash,        &trash,       &trash, 
-                   &trash,      &trash,        &trash )==15) {
+                   &trash,      &trash,        &trash );
+    if(num_args == 15){
       g.box.type = str;
-      cout << "loadGroundTruths: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << g.box.x1 << " "<< g.box.y1 << " " << g.box.x2 << " "<< g.box.y2 << endl;
+      //cout << "loadGroundTruths: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << g.box.x1 << " "<< g.box.y1 << " " << g.box.x2 << " "<< g.box.y2 << endl;
       groundtruth.push_back(g);
     }else{
-      cout << "Could not load ground truths in fscan :/ " << endl;
+      cout << "Could not load ground truths in fscanf of file " << file_name << ", are you sure it is formatted correctly? (15 values per line) " <<  endl; 
+      cout << "Values read: " << str << ", dbox (x1, y1, x2, y2) " << g.box.x1 << g.box.y1 << g.box.x2 << g.box.y2 << endl;
     }
   }
   fclose(fp);
@@ -167,7 +174,6 @@ EVALUATION HELPER FUNCTIONS
 // criterion defines whether the overlap is computed with respect to both areas (ground truth and detection)
 // or with respect to box a or b (detection and "dontcare" areas)
 inline double boxoverlap(tBox a, tBox b, int32_t criterion=-1){
-  cout << "\tCalculating overlap between boxes " << endl;
   // overlap is invalid in the beginning
   double o = -1;
 
@@ -176,7 +182,7 @@ inline double boxoverlap(tBox a, tBox b, int32_t criterion=-1){
   double y1 = max(a.y1, b.y1);
   double x2 = min(a.x2, b.x2);
   double y2 = min(a.y2, b.y2);
-
+  
   // compute width and height of overlapping area
   double w = x2-x1;
   double h = y2-y1;
@@ -198,6 +204,9 @@ inline double boxoverlap(tBox a, tBox b, int32_t criterion=-1){
   else if(criterion==1) // bbox_b
     o = inter / b_area;
 
+  cout << "Calculating overlap between box 1: (" << a.x1 << ", " << a.y1 << ", " << a.x2 << ", " << a.y2;
+  cout << ") and box 2: (" << b.x1 << ", " << b.y1 << ", " << b.x2 << ", " << b.y2 << endl;
+  cout << "Overlap is : " << o << endl;
   // overlap
   return o;
 }
@@ -247,7 +256,6 @@ void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vect
   cout << "Current class string: " << CLASS_NAMES[current_class].c_str() << endl;
   // extract ground truth bounding boxes for current evaluation class
   cout << "GT size " << gt.size() << endl;
-  if(gt.size() > 1000){cout << "FAILED EOROEROEROEROEOR" << endl; return;} // We get some gt sizes that are invalid, so skip them
     for (int32_t i=0;i<gt.size(); i++){
     // only bounding boxes with a minimum height are used for evaluation
     double height = gt[i].box.y2 - gt[i].box.y1;
@@ -258,7 +266,6 @@ void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vect
 
     // all classes without a neighboring class
     if(!strcasecmp(gt[i].box.type.c_str(), CLASS_NAMES[current_class].c_str())){
-      cout << "Box type not of current class" << endl;
       valid_class = 1;
     }
     // classes with a neighboring class
@@ -360,7 +367,6 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
 
       // find the maximum score for the candidates and get idx of respective detection
       double overlap = boxoverlap(det[j].box, gt[i].box);
-
       // for computing recall thresholds, the candidate with highest score is considered
       if(!compute_fp && overlap>MIN_OVERLAP[current_class] && det[j].thresh>valid_detection){
         det_idx         = j;
@@ -516,6 +522,7 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
   vector<tPrData> pr;
   pr.assign(thresholds.size(),tPrData());
   // FIXME: This should iterate over all images in dir
+  cout << "eval_class(): Iterating over all " << N_TESTIMAGES << " testimages" << endl;
   for (int32_t i=0; i<N_TESTIMAGES; i++){
 
     // for all scores/recall thresholds do:
@@ -553,6 +560,7 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
   // filter precision and AOS using max_{i..end}(precision)
   for (int32_t i=0; i<thresholds.size(); i++){
     precision[i] = *max_element(precision.begin()+i, precision.end());
+    cout << "eval_class(): Calculating precision["<<i<<"] to be " << precision[i] << endl;
     if(compute_aos)
       aos[i] = *max_element(aos.begin()+i, aos.end());
   }
@@ -786,7 +794,7 @@ int32_t main (int32_t argc,char *argv[]) {
     cout << "ARGC: " << argc;
     return 1;
   }
-
+  cerr << "TESTING TESTING TESTING TESTING CERR " << endl;
   cout << "Running main of cpp evaluation" << endl;
   // read arguments
   cout << "Reading arguments" << endl;
