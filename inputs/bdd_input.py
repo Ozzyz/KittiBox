@@ -41,6 +41,7 @@ def extract_bboxes(label_file):
     labels = _gen_label_list(label_file)
     for label in labels:
         if label[0] not in CLASSES:
+            logging.warn("{} not in classes - skipping".format(label[0]))
             continue
         bbox_rect = extract_bbox_rect(label)
         bbox_rect.classID = CLASSES.index(label[0])
@@ -54,6 +55,7 @@ def extract_bbox_rect(label_list):
     if x1 > x2 or y1 > y2:
         logging.warn("Bounding boxes may have illegal format -> x1,y1,x2,y2: ({},{},{},{})".format(x1,y1,x2,y2))
         raise ValueError
+    logging.info("Extracting bboxes x1, y1, x2, y2: {}".format((x1,y1,x2,y2)))
     return AnnoLib.AnnoRect(x1=x1, y1=y1, x2=x2, y2=y2)
 
 
@@ -77,6 +79,7 @@ def _augment_image(hypes, image):
     """Augments the given image by randomly applying brightness, contras, saturation and hue."""
     # Because these operations are not commutative, consider randomizing
     # randomize the order their operation.
+    logging.info("Augmenting image in KittiBox")
     augment_level = hypes['augment_level']
     if augment_level > 0:
         image = tf.image.random_brightness(image, max_delta=30)
@@ -117,6 +120,7 @@ def _load_and_resize_image(image_file, anno, hypes):
     return im
 
 def _apply_jitter(im, anno, hypes):
+    logging.info("Applying jitter to image (kittibox)")
     jitter_scale_min = 0.9
     jitter_scale_max = 1.1
     jitter_offset = 16
@@ -155,6 +159,7 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
             #image_file = os.path.join(base_path, image_file)
             #gt_image_file = os.path.join(base_path, gt_image_file)
 
+            logging.info("Creating bdd annotations for im: {}, gt: {}".format(image_file, gt_image_file))
             anno = _create_bdd_annotations(image_file, gt_image_file)
 
             im = _load_and_resize_image(image_file, anno, hypes)
@@ -178,7 +183,7 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
             mask = _generate_mask(hypes, mask_list)
             grid_width = hypes["grid_width"]
             grid_height = hypes["grid_height"]
-            mask = np.ones([grid_height, grid_width])
+            #mask = np.ones([grid_height, grid_width])
 
             boxes = boxes.reshape([grid_height,
                                    grid_width, 4])
