@@ -14,11 +14,11 @@
         "label_dir": "bdd100k/kitti_labels/val"
     },
     "logging": {
-        "display_iter": 200,
-        "eval_iter": 2000,
-        "write_iter": 800,
-        "save_iter": 2000,
-        "image_iter": 10000
+        "display_iter": 2,
+        "eval_iter": 5,
+        "write_iter": 5,
+        "save_iter": 5,
+        "image_iter": 5
     },
     "arch": {
         "deep_feat": "pool5"
@@ -26,7 +26,7 @@
     "path": ["../incl"],
     "solver": {
         "opt": "Adam",
-        "use_jitter": true,
+        "use_jitter": false,
         "rnd_seed": 1,
         "epsilon": 0.00001, 
         "learning_rate": 1e-5,

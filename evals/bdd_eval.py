@@ -141,9 +141,11 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
     if validation:
         kitti_txt = os.path.join(hypes['dirs']['data_dir'],
                                  hypes['data']['val_file'])
+        logging.info("get_results(): Trying to test VAL-phase with kitti-predictions on path {}".format(kitti_txt))
     else:
         kitti_txt = os.path.join(hypes['dirs']['data_dir'],
                                  hypes['data']['train_file'])
+        logging.info("get_results(): Trying to test TRAIN-phase with kitti-predictions on path {}".format(kitti_txt))
     # true_annolist = AnnLib.parse(test_idl)
 
     val_dir = make_val_dir(hypes, validation)
@@ -171,6 +173,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
                                            hypes["image_width"]),
                                 interp='cubic')
         logging.info("Trying to read image with path: {}".format(image_file))
+        logging.info("Running TF-sesh with image placeholder {} and image with shape {}".format(image_pl, img.shape))
         feed = {image_pl: img}
         (np_pred_boxes, np_pred_confidences) = sess.run([pred_boxes,
                                                          pred_confidences],
