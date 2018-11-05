@@ -52,8 +52,8 @@ def extract_bbox_rect(label_list):
     """ Returns an AnnoRect object from the data in the given label list """
     x1, y1, x2, y2 = [float(x) for x in label_list[4:8]]
     if x1 > x2 or y1 > y2:
-        pass
         logging.warn("Bounding boxes may have illegal format -> x1,y1,x2,y2: ({},{},{},{})".format(x1,y1,x2,y2))
+        raise ValueError
     return AnnoLib.AnnoRect(x1=x1, y1=y1, x2=x2, y2=y2)
 
 
@@ -67,7 +67,6 @@ def _gen_label_list(label_file):
     for label_row in label_lines:
         #logging.info(f"Parsing label line {label_row} in {label_file}")
         labels = label_row.split(' ')
-        # Since some of the labels are separated by whitespace (e.g 'traffic light')
         assert len(labels) == 15, "Expected number of columns to be 15, not" + str(len(labels))
         label_list.append(labels)
     return label_list
@@ -175,8 +174,8 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
                                             hypes["rnn_len"])
 
             # BDD100K does not contain any 'DontCare' areas
-            #mask_list = [rect for rect in anno.rects if rect.classID == -1]
-            #mask = _generate_mask(hypes, mask_list)
+            mask_list = [rect for rect in anno.rects if rect.classID == -1]
+            mask = _generate_mask(hypes, mask_list)
             grid_width = hypes["grid_width"]
             grid_height = hypes["grid_height"]
             mask = np.ones([grid_height, grid_width])
