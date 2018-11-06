@@ -90,6 +90,8 @@ def evaluate(hypes, sess, image_pl, softmax):
     with open(res_file) as f:
         for mode in ['easy', 'medium', 'hard']:
             line = f.readline()
+            if not line:
+                continue
             logging.info("Reading line: {}".format(line))
             result = np.array(line.rstrip().split(" ")).astype(float)
             mean = np.mean(result)
@@ -154,7 +156,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
     image_list = []
 
     pred_annolist = AnnLib.AnnoList()
-
+    logging.info("Reading lines in kitti_txt: {}".format(kitti_txt))
     files = [line.rstrip() for line in open(kitti_txt)]
     #base_path = os.path.realpath(os.path.dirname(kitti_txt))
     base_path = "/notebooks"
@@ -178,6 +180,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
         (np_pred_boxes, np_pred_confidences) = sess.run([pred_boxes,
                                                          pred_confidences],
                                                         feed_dict=feed)
+        #np.save("testarr{}".format(random.randint(0,100)), np_pred_boxes)
         pred_anno = AnnLib.Annotation()
         pred_anno.imageName = image_file
         new_img, rects = utils.train_utils.add_rectangles(
@@ -185,16 +188,20 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
             np_pred_boxes, show_removed=False,
             use_stitching=True, rnn_len=hypes['rnn_len'],
             min_conf=0.50, tau=hypes['tau'], color_acc=(0, 255, 0))
-
-        if validation and i % 15 == 0:
+        #num = random.randint(0,100)
+        #scp.misc.imsave("testtesttes{}.jpg".format(num), new_img)
+        if validation and i % 2 == 0:
             image_name = os.path.basename(pred_anno.imageName)
             image_name = os.path.join(img_dir, image_name)
+            logging.info("*"*20)
             logging.info("Save image {} to file ".format(image_name))
+            logging.info("*"*20)
             scp.misc.imsave(image_name, new_img)
 
         if validation:
             image_name = os.path.basename(pred_anno.imageName)
             image_list.append((image_name, new_img))
+            logging.info("Appending {} to image_list".format(image_name))
         # get name of file to write to
         image_name = os.path.basename(image_file)
         val_file_name = image_name.split('.')[0] + '.txt'
@@ -214,6 +221,15 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
         pred_annolist.append(pred_anno)
 
     logging.info("Starting to evaluate fps of network")
+    if feed is None:
+        logging.warn("Feed is none - available files are {}".format(files)) 
+        image_file = os.path.join(base_path, image_file)
+        orig_img = scp.misc.imread(image_file)[:, :, :3]
+        img = scp.misc.imresize(orig_img, (hypes["image_height"],
+                                           hypes["image_width"]),
+                                interp='cubic')
+        feed = {image_pl : img}
+    logging.info("Feeding in image to fps test")
     start_time = time.time()
     for i in xrange(100):
         (np_pred_boxes, np_pred_confidences) = sess.run([pred_boxes,
@@ -227,7 +243,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
             hypes, np_pred_confidences,
             np_pred_boxes, show_removed=False,
             use_stitching=True, rnn_len=hypes['rnn_len'],
-            min_conf=0.001, tau=hypes['tau'])
+            min_conf=0.5, tau=hypes['tau'])
     dt2 = (time.time() - start_time)/100
 
     return pred_annolist, image_list, dt, dt2

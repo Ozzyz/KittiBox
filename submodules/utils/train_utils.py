@@ -12,21 +12,25 @@ from .data_utils import (annotation_jitter, annotation_to_h5)
 from utils.annolist import AnnotationLib as al
 from .rect import Rect
 
+import logging
 
 def rescale_boxes(current_shape, anno, target_height, target_width):
+    
     x_scale = target_width / float(current_shape[1])
     y_scale = target_height / float(current_shape[0])
+    logging.info("Rescaling boxes - x_scale: {}, y_scale: {} (current shape of image: {}".format(x_scale, y_scale, current_shape))
     for r in anno.rects:
-        # assert r.x1 < r.x2
+        #assert r.x1 < r.x2
         r.x1 *= x_scale
         r.x2 *= x_scale
-        # assert r.x1 < r.x2
+        #assert r.x1 < r.x2
         r.y1 *= y_scale
         r.y2 *= y_scale
     return anno
 
 
 def _draw_rect(draw, rect, color):
+    #logging.debug("Drawing rectangles (train_utils.py)")
     left = rect.cx-int(rect.width/2)
     bottom = rect.cy+int(rect.height/2)
     right = rect.cx+int(rect.width/2)
@@ -38,6 +42,7 @@ def _draw_rect(draw, rect, color):
 
 
 def compute_rectangels(H, confidences, boxes, use_stitching=False, rnn_len=1, min_conf=0.1, show_removed=True, tau=0.25):
+    #logging.info("Train utils: computing rectangles ")
     num_cells = H["grid_height"] * H["grid_width"]
     boxes_r = np.reshape(boxes, (-1,
                                  H["grid_height"],
@@ -50,6 +55,7 @@ def compute_rectangels(H, confidences, boxes, use_stitching=False, rnn_len=1, mi
                                              rnn_len,
                                              H['num_classes']))
     cell_pix_size = H['region_size']
+    logging.info("Shape of Boxes: {}, confidences: {}".format(boxes_r.shape, confidences_r.shape))
     all_rects = [[[] for _ in range(H["grid_width"])] for _ in range(H["grid_height"])]
     for n in range(rnn_len):
         for y in range(H["grid_height"]):
@@ -65,7 +71,9 @@ def compute_rectangels(H, confidences, boxes, use_stitching=False, rnn_len=1, mi
     all_rects_r = [r for row in all_rects for cell in row for r in cell]
     if use_stitching:
         from stitch_wrapper import stitch_rects
+        logging.info("Number of rects before stitching: {}".format(len(all_rects)))
         acc_rects = stitch_rects(all_rects, tau)
+        logging.info("Stitched rects: {}".format(len(acc_rects)))
     else:
         acc_rects = all_rects_r
 
@@ -96,7 +104,9 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
                 w = bbox[2]
                 h = bbox[3]
                 conf = np.max(confidences_r[0, y, x, n, 1:])
-                all_rects[y][x].append(Rect(abs_cx,abs_cy,w,h,conf))
+                new_rect = Rect(abs_cx, abs_cy, w, h, conf)
+                logging.info("Converted bbox {} to {}".format(bbox, new_rect)) 
+                all_rects[y][x].append(new_rect)
 
     all_rects_r = [r for row in all_rects for cell in row for r in cell]
     if use_stitching:
@@ -111,9 +121,10 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
     pairs = [(all_rects_r, color_removed), (acc_rects, color_acc)]
     im = Image.fromarray(image.astype('uint8'))
     draw = ImageDraw.Draw(im)
+    logging.info("Number of rects: {}".format(len(acc_rects)))
+    logging.info("Sampled rectangles: {}".format(acc_rects))
     for rect_set, color in pairs:
         for rect in rect_set:
-            if rect.confidence > min_conf:
                 _draw_rect(draw, rect, color)
 
     image = np.array(im).astype('float32')

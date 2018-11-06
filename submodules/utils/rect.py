@@ -36,3 +36,5 @@ class Rect(object):
             self.width == other.width and
             self.height == other.height and
             self.confidence == other.confidence)
+    def __repr__(self):
+        return "Rect(cx: {}, cy: {}, w: {}, h: {})".format(self.cx, self.cy, self.width, self.height)

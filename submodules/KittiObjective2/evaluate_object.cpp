@@ -26,9 +26,9 @@ int32_t N_TESTIMAGES = 10;
 enum DIFFICULTY{EASY=0, MODERATE=1, HARD=2};
 
 // evaluation parameter
-const int32_t MIN_HEIGHT[6]     = {80, 50, 50, 20, 20, 80};     // minimum height for evaluated groundtruth/detections
-const int32_t MAX_OCCLUSION[6]  = {1, 1, 2, 1, 1, 1};        // maximum occlusion level of the groundtruth used for evaluation
-const double  MAX_TRUNCATION[6] = {0.15, 0.3, 0.5, 0.2, 0.2, 0.2}; // maximum truncation level of the groundtruth used for evaluation
+const int32_t MIN_HEIGHT[6]     = {40, 25, 25, 10, 10, 40};     // minimum height for evaluated groundtruth/detections
+const int32_t MAX_OCCLUSION[6]  = {1000, 1000, 2000, 1, 1, 1};        // maximum occlusion level of the groundtruth used for evaluation
+const double  MAX_TRUNCATION[6] = {1000, 1000, 1000, 0.2, 0.2, 0.2}; // maximum truncation level of the groundtruth used for evaluation
 
 // evaluated object classes
 enum CLASSES{CAR=0, PEDESTRIAN=1, CYCLIST=2, TRAFFIC_LIGHT=3, TRAFFIC_SIGN=4, TRUCK=5};
@@ -38,7 +38,7 @@ vector<string> CLASS_NAMES;
 const double   MIN_OVERLAP[6] = {0.005, 0.5, 0.5, 0.5, 0.5, 0.5};                  // the minimum overlap required for evaluation
 
 // no. of recall steps that should be evaluated (discretized)
-const double N_SAMPLE_PTS = 41;
+const double N_SAMPLE_PTS = 10;
 
 // initialize class names
 void initGlobals () {
@@ -94,13 +94,14 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
         eval_cyclist = true;
     }else{
       cout << "\t\t\t loadDetections: Could not load detections from fscanf of file " << file_name << ", are you sure it is formatted correctly? (16 values per line)" <<  endl;
-     
-      cout << "FAIL! Values read: " << str << ", alpha, dbox (x1, y1, x2, y2), tresh " << d.box.alpha << d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << d.thresh <<  endl;
+      cout << "Note that classes other than car, pedestrian and cyclists are ignored" << endl;
+      cout << "FAIL! Values read: " << str << ", alpha, dbox (x1, y1, x2, y2), tresh " << d.box.alpha << ", "<< d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << d.thresh <<  endl;
     }
   }
   fclose(fp);
   success = true;
-  cout << "Sucess: " << success << endl;
+  cout << "Successfully closed file and loaded detections " << endl;
+  cout << "detections length: " << detections.size() << endl;
   return detections;
 }
 
@@ -140,7 +141,8 @@ vector<tGroundtruth> loadGroundtruth(string file_name,bool &success) {
   }
   fclose(fp);
   cout << "Successfully closed file and loaded ground truth " << endl;
-  success = true;
+  cout << "groundtruth length: " << groundtruth.size() << endl; 
+ success = true;
   return groundtruth;
 }
 
@@ -258,6 +260,8 @@ void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vect
   cout << "Clean data called, current class : " << current_class << endl;
   cout << "Current class string: " << CLASS_NAMES[current_class].c_str() << endl;
   // extract ground truth bounding boxes for current evaluation class
+  
+  cout << "computeStatistics: Computing TP, FP and FN" << endl;
   cout << "GT size " << gt.size() << endl;
     for (int32_t i=0;i<gt.size(); i++){
     // only bounding boxes with a minimum height are used for evaluation
@@ -284,9 +288,10 @@ void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vect
     // ground truth is ignored, if occlusion, truncation exceeds the difficulty or ground truth is too small
     // (doesn't count as FN nor TP, although detections may be assigned)
     bool ignore = false;
-    if(gt[i].occlusion>MAX_OCCLUSION[difficulty] || gt[i].truncation>MAX_TRUNCATION[difficulty] || height<MIN_HEIGHT[difficulty])
+    if(gt[i].occlusion>MAX_OCCLUSION[difficulty] || gt[i].truncation>MAX_TRUNCATION[difficulty] || height<MIN_HEIGHT[difficulty]){
       ignore = true;
-
+      cout << "cleanData: Ignoring entry - occlusion: " << (gt[i].occlusion>MAX_OCCLUSION[difficulty]) << ", truncation: " << (gt[i].truncation>MAX_TRUNCATION[difficulty])  << ", min_height: " << (height<MIN_HEIGHT[difficulty]) << endl;
+    }
     // set ignored vector for ground truth
     // current class and not ignored (total no. of ground truth is detected for recall denominator)
     if(valid_class==1 && !ignore){
@@ -340,7 +345,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
   // detections with a low score are ignored for computing precision (needs FP)
   if(compute_fp){
     for(int32_t i=0; i<det.size(); i++){
-      cout << "Thresh of det: " << det[i].thresh << " thresh of computestatistics: " << thresh << endl;
+     // cout << "Thresh of det: " << det[i].thresh << " thresh of computestatistics: " << thresh << endl;
       if(det[i].thresh<thresh)
         ignored_threshold[i] = true;
     }
@@ -403,7 +408,6 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
     =======================================================================*/
 
     // nothing was assigned to this valid ground truth
-    cout << "computeStatistics: Computing TP, FP and FN" << endl;
     if(valid_detection==NO_DETECTION && ignored_gt[i]==0)
       stat.fn++;
 
@@ -699,7 +703,7 @@ bool eval(string path, string path_to_gt){
     string full_file_name = file_path.path().string();
     // Since the file names are given as absolute paths, we need to find the last folder separator and ignore everything before this.
     string file_name(full_file_name.substr(full_file_name.rfind("/") + 1));
-    if(!exists_test0(result_dir + "/" + file_name) || ! has_suffix(file_name, ".txt")) {
+    if(!exists_test0(result_dir + "/" + file_name) || ! has_suffix(file_name, ".txt") || has_suffix(file_name, "orientation.txt") || has_suffix(file_name, "detection.txt")) {
       cout << "\t" << result_dir + "/" + file_name << " does not exist" << endl;
       continue;
     }
@@ -745,10 +749,10 @@ bool eval(string path, string path_to_gt){
       return false;
     }
     fclose(fp_det);
-    //saveAndPlotPlots(plot_dir,CLASS_NAMES[CAR] + "_detection",CLASS_NAMES[CAR],precision,0);
-    //cout << "Saved car plots successfully " << endl;
+    saveAndPlotPlots(plot_dir,CLASS_NAMES[CAR] + "_detection",CLASS_NAMES[CAR],precision,0);
+    cout << "Saved car plots successfully " << endl;
     if(compute_aos){
-      //saveAndPlotPlots(plot_dir,CLASS_NAMES[CAR] + "_orientation",CLASS_NAMES[CAR],aos,1);
+      saveAndPlotPlots(plot_dir,CLASS_NAMES[CAR] + "_orientation",CLASS_NAMES[CAR],aos,1);
       fclose(fp_ori);
     }
   }
@@ -767,11 +771,11 @@ bool eval(string path, string path_to_gt){
       return false;
     }
     fclose(fp_det);
-    //saveAndPlotPlots(plot_dir,CLASS_NAMES[PEDESTRIAN] + "_detection",CLASS_NAMES[PEDESTRIAN],precision,0);
-    //cout << "Finished saving plots with pedestrians" << endl;
+    saveAndPlotPlots(plot_dir,CLASS_NAMES[PEDESTRIAN] + "_detection",CLASS_NAMES[PEDESTRIAN],precision,0);
+    cout << "Finished saving plots with pedestrians" << endl;
     if(compute_aos){
       fclose(fp_ori);
-      //saveAndPlotPlots(plot_dir,CLASS_NAMES[PEDESTRIAN] + "_orientation",CLASS_NAMES[PEDESTRIAN],aos,1);
+      saveAndPlotPlots(plot_dir,CLASS_NAMES[PEDESTRIAN] + "_orientation",CLASS_NAMES[PEDESTRIAN],aos,1);
     }
   }
 
@@ -789,11 +793,11 @@ bool eval(string path, string path_to_gt){
       return false;
     }
     fclose(fp_det);
-    //saveAndPlotPlots(plot_dir,CLASS_NAMES[CYCLIST] + "_detection",CLASS_NAMES[CYCLIST],precision,0);
-    //cout << "Finished saving plots with cyclists" << endl;
+    saveAndPlotPlots(plot_dir,CLASS_NAMES[CYCLIST] + "_detection",CLASS_NAMES[CYCLIST],precision,0);
+    cout << "Finished saving plots with cyclists" << endl;
     if(compute_aos){
       fclose(fp_ori);
-      //saveAndPlotPlots(plot_dir,CLASS_NAMES[CYCLIST] + "_orientation",CLASS_NAMES[CYCLIST],aos,1);
+      saveAndPlotPlots(plot_dir,CLASS_NAMES[CYCLIST] + "_orientation",CLASS_NAMES[CYCLIST],aos,1);
     }
   }
   
