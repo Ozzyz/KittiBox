@@ -189,6 +189,15 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
             np_pred_boxes, show_removed=False,
             use_stitching=True, rnn_len=hypes['rnn_len'],
             min_conf=0.50, tau=hypes['tau'], color_acc=(0, 255, 0))
+
+        
+        accepted_predictions = []
+        for rect in rects:
+            if rect.score >= 0.5:
+                logging.info("Accepted rect {} - over threshold  - {}".format(rect, rect.score))
+                accepted_predictions.append(rect)
+            else:
+                logging.info("Skipping rect {} because too low threshold {}".format(rect, rect.score))
         #num = random.randint(0,100)
         #scp.misc.imsave("testtesttes{}.jpg".format(num), new_img)
         if validation and i % 2 == 0:
