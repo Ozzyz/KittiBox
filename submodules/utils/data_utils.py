@@ -14,14 +14,14 @@ import scipy as scp
 import scipy.misc
 
 import random
-
+import logging
 from collections import namedtuple
 
 
-def annotation_to_h5(H, a, cell_width, cell_height, max_len):
-    region_size = H['region_size']
-    # assert H['region_size'] == H['image_height'] / H['grid_height']
-    # assert H['region_size'] == H['image_width'] / H['grid_width']
+def annotation_to_h5(hypes, a, cell_width, cell_height, max_len):
+    region_size = hypes['region_size']
+    assert hypes['region_size'] == hypes['image_height'] / hypes['grid_height']
+    assert hypes['region_size'] == hypes['image_width'] / hypes['grid_width']
     cell_regions = get_cell_grid(cell_width, cell_height, region_size)
 
     cells_per_image = len(cell_regions)
@@ -52,8 +52,8 @@ def annotation_to_h5(H, a, cell_width, cell_height, max_len):
             width = abs(box_list[cidx][bidx].x2 - box_list[cidx][bidx].x1)
             height = abs(box_list[cidx][bidx].y2 - box_list[cidx][bidx].y1)
 
-            if (abs(ox) < H['focus_size'] * region_size and abs(oy) < H['focus_size'] * region_size and
-                    width < H['biggest_box_px'] and height < H['biggest_box_px']):
+            if (abs(ox) < hypes['focus_size'] * region_size and abs(oy) < hypes['focus_size'] * region_size and
+                    width < hypes['biggest_box_px'] and height < hypes['biggest_box_px']):
                 unsorted_boxes.append(
                     np.array([ox, oy, width, height], dtype=np.float))
 
@@ -94,7 +94,7 @@ def annotation_jitter(I, a_in, min_box_width=20, jitter_scale_min=0.9, jitter_sc
             assert(r.x1 < r.x2 and r.y1 < r.y2)
             new_rects.append(r)
         except:
-            print('bad rectangle')
+            raise ValueError
     a.rects = new_rects
 
     if a.rects:
@@ -131,7 +131,7 @@ def annotation_jitter(I, a_in, min_box_width=20, jitter_scale_min=0.9, jitter_sc
 
     I1 = scp.misc.imresize(I, jitter_scale, interp='cubic')
 
-    print("Resized image with scale {}".format(jitter_scale))
+    logging.info("Resized image with scale {}".format(jitter_scale))
 
     jitter_offset_x = np.random.random_integers(-jitter_offset, jitter_offset)
     jitter_offset_y = np.random.random_integers(-jitter_offset, jitter_offset)

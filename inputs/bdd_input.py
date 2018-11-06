@@ -55,7 +55,6 @@ def extract_bbox_rect(label_list):
     if x1 > x2 or y1 > y2:
         logging.warn("Bounding boxes may have illegal format -> x1,y1,x2,y2: ({},{},{},{})".format(x1,y1,x2,y2))
         raise ValueError
-    logging.info("Extracting bboxes x1, y1, x2, y2: {}".format((x1,y1,x2,y2)))
     return AnnoLib.AnnoRect(x1=x1, y1=y1, x2=x2, y2=y2)
 
 
