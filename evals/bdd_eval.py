@@ -53,6 +53,22 @@ def write_rects(rects, filename):
             print(string, file=f)
 
 
+def draw_rects(image, rects, color=(0, 255, 0)):
+    """ Returns the image with all rectangles drawn over it"""
+    from PIL import Image, ImageDraw
+    poly = Image.new('RGBA', image.size)
+    pdraw = ImageDraw.Draw(poly)
+    color = (0, 0, 255)
+    for rect in rects:
+        rect_cords = ((rect.x1, rect.y1), (rect.x1, rect.y2),
+                      (rect.x2, rect.y2), (rect.x2, rect.y1),
+                      (rect.x1, rect.y1))
+        pdraw.line(rect_cords, fill=color, width=2)
+
+    im.paste(poly, mask=poly)
+
+    return np.array(im)
+
 def evaluate(hypes, sess, image_pl, softmax):
     logging.info("KittiBox: Evaluating images and bboxes")
     pred_annolist, image_list, dt, dt2 = get_results(
@@ -198,8 +214,10 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
                 accepted_predictions.append(rect)
             else:
                 logging.info("Skipping rect {} because too low threshold {}".format(rect, rect.score))
-        #num = random.randint(0,100)
-        #scp.misc.imsave("testtesttes{}.jpg".format(num), new_img)
+        
+        rect_image = draw_rects(img, rects)
+        num = random.randint(0,100)
+        scp.misc.imsave("testtesttes{}.jpg".format(num), rect_img)
         if validation and i % 2 == 0:
             image_name = os.path.basename(pred_anno.imageName)
             image_name = os.path.join(img_dir, image_name)

@@ -79,11 +79,16 @@ def read_kitti_anno(label_file):
     Returns:
       Lists of rectangels: Cars and don't care area.
     """
+    print("Reading label file" , label_file)
+    
     labels = [line.rstrip().split(' ') for line in open(label_file)]
     rect_list = []
     for label in labels:
-        if not (label[0] == 'Car' or label[0] == 'Van' or
-                label[0] == 'DontCare'):
+        print("Reading label line: ", label)
+        category = label[0].capitalize()
+        if not (category == 'Car' or category == 'Van' or
+                category == 'DontCare'):
+            print("Skipping label ", label[0])
             continue
         if label[0] == 'DontCare':
             class_id = -1
@@ -180,8 +185,8 @@ def _load_kitti_txt(kitti_txt, hypes, jitter=False, random_shuffel=True):
     """Take the txt file and net configuration and create a generator
     that outputs a jittered version of a random image from the annolist
     that is mean corrected."""
-
-    base_path = os.path.realpath(os.path.dirname(kitti_txt))
+    base_path = "/notebooks"
+    #base_path = os.path.realpath(os.path.dirname(kitti_txt))
     files = [line.rstrip() for line in open(kitti_txt)]
     if hypes['data']['truncate_data']:
         files = files[:10]
@@ -199,7 +204,7 @@ def _load_kitti_txt(kitti_txt, hypes, jitter=False, random_shuffel=True):
                 "File does not exist: %s" % gt_image_file
 
             rect_list = read_kitti_anno(gt_image_file)
-
+            print(rect_list)
             anno = fake_anno(rect_list)
 
             im = scp.misc.imread(image_file)
@@ -409,7 +414,7 @@ def draw_idl():
 
 def draw_both():
     idlfile = "/home/mifs/mttt2/cvfs/DATA/KittiBox/train_3.idl"
-    kitti_txt = "/home/mifs/mttt2/cvfs/DATA/KittiBox/train.txt"
+    kitti_txt = "/notebooks/DATA/img_bbox_train.txt"
 
     with open('../hypes/kittiBox.json', 'r') as f:
         logging.info("f: %s", f)
@@ -417,22 +422,22 @@ def draw_both():
 
     hypes["rnn_len"] = 1
 
-    gen1 = _load_idl_tf(idlfile, hypes, random_shuffel=False)
+    #gen1 = _load_idl_tf(idlfile, hypes, random_shuffel=False)
     gen2 = _load_kitti_txt(kitti_txt, hypes, random_shuffel=False)
 
-    data1 = gen1.next()
+    #data1 = gen1.next()
     data2 = gen2.next()
     for i in range(20):
-        data1 = gen1.next()
+        #data1 = gen1.next()
         data2 = gen2.next()
-        image1 = draw_encoded(image=data1['image'], confs=data1['flags'],
-                              rects=data1['rects'])
-        image2 = draw_encoded(image=data2['image'], confs=data2['confs'],
-                              rects=data2['rects'], mask=data2['mask'])
-
-        scp.misc.imshow(image1)
-
-        scp.misc.imshow(image2)
+        #image1 = draw_encoded(image=data1['image'], confs=data1['flags'],
+          #                    rects=data1['rects'])
+        #image2 = draw_encoded(image=data2['image'], confs=data2['confs'],
+        #                      rects=data2['rects'], mask=data2['mask'])
+        rects = data2['rects']
+        image2 = data2['image']
+        im = draw_encoded(image2, confs=data2['confs'], rects=rects)
+        scp.misc.imsave('test{}.png'.format(i), im)
 
 
 if __name__ == '__main__':
