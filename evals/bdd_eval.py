@@ -44,6 +44,7 @@ def make_img_dir(hypes):
 
 
 def write_rects(rects, filename):
+    # TODO: Expand this to write bboxes of different classes
     logging.info("Writing rects to file {}".format(filename))
     with open(filename, 'w') as f:
         for rect in rects:

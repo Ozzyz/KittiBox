@@ -371,10 +371,10 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
 
       // detections not of the current class, already assigned or with a low threshold are ignored
       if(ignored_det[j]==-1){
-        cout << "Skipping " << j << "  because of ignored det == -1" << endl;
+        cout << "\tSkipping " << j << "  because of ignored det == -1" << endl;
         continue;}
       if(assigned_detection[j]){
-        cout << "Skipping " << j << " because of already assigned detection" << endl;
+        cout << "\tSkipping " << j << " because of already assigned detection" << endl;
         continue;}
       if(ignored_threshold[j]){
         //cout << "Skipping " << j << " because of ignored threshold" << endl;
@@ -494,6 +494,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
   cout << "Stat values: " <<endl;
   cout << "\t\t stat FN: " << stat.fn << endl;
   cout << "\t\t stat TP: " << stat.tp << endl;
+  cout << "\t\t stat similarity: " << stat.similarity << endl;
   return stat;
 }
 
@@ -508,7 +509,7 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
   vector<double> v, thresholds;                       // detection scores, evaluated for recall discretization
   vector< vector<int32_t> > ignored_gt, ignored_det;  // index of ignored gt detection for current class/difficulty
   vector< vector<tGroundtruth> > dontcare;            // index of dontcare areas, included in ground truth
-  cout << "Iterating through all test classes " << endl;
+  cout << "\tIterating through all test images () " << N_TESTIMAGES << " test images" << endl;
   // for all test images do
   for (int32_t i=0; i<N_TESTIMAGES; i++){
    
@@ -518,24 +519,18 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
 
     // only evaluate objects of current class and ignore occluded, truncated objects
     cleanData(current_class, groundtruth[i], detections[i], i_gt, dc, i_det, n_gt, difficulty);
-    cout << "Sucessfully called cleanData" << endl;
+    
     ignored_gt.push_back(i_gt);
     ignored_det.push_back(i_det);
     dontcare.push_back(dc);
-    cout << "Size of ignored gt: " << ignored_gt.size() << endl;
-    cout << "Size of ignored det: " << ignored_det.size() << endl;
-    cout << "Size of dontcare: " << dontcare.size() << endl;
     // compute statistics to get recall values
     tPrData pr_tmp = tPrData();
     // FIXME: computeStatistics returns pr_tmp with v-variable of length 0
     pr_tmp = computeStatistics(current_class, groundtruth[i], detections[i], dc, i_gt, i_det, true);
-    cout << "Successfully computed statistics " << endl;
     // add detection scores to vector over all images
-    cout << "Size of tp_tmp.v: " << pr_tmp.v.size() << endl;
     for(int32_t j=0; j<pr_tmp.v.size(); j++)
       v.push_back(pr_tmp.v[j]);
   }
-  cout << "Size of v-vector before thresholding: " << v.size() << endl;
   // get scores that must be evaluated for recall discretization
   thresholds = getThresholds(v, n_gt);
   cout << "Successfully called getThresholds" << endl;
@@ -599,6 +594,7 @@ void saveAndPlotPlots(string dir_name,string file_name,string obj_type,vector<do
 
   // save plot data to file
   FILE *fp = fopen((dir_name + "/" + file_name + ".txt").c_str(),"w");
+  cout << "Saving plot to file " << dir_name + "/" + file_name + ".txt" << endl;
   for (int32_t i=0; i<(int)N_SAMPLE_PTS; i++)
     fprintf(fp,"%f %f %f %f\n",(double)i/(N_SAMPLE_PTS-1.0),vals[0][i],vals[1][i],vals[2][i]);
   fclose(fp);
@@ -704,7 +700,7 @@ bool eval(string path, string path_to_gt){
     // Since the file names are given as absolute paths, we need to find the last folder separator and ignore everything before this.
     string file_name(full_file_name.substr(full_file_name.rfind("/") + 1));
     if(!exists_test0(result_dir + "/" + file_name) || ! has_suffix(file_name, ".txt") || has_suffix(file_name, "orientation.txt") || has_suffix(file_name, "detection.txt")) {
-      cout << "\t" << result_dir + "/" + file_name << " does not exist" << endl;
+      cout << "\t" << result_dir + "/" + file_name << " does not exist - skipping" << endl;
       continue;
     }
 
@@ -829,12 +825,13 @@ int32_t main (int32_t argc,char *argv[]) {
   // init notification mail
   cout << "Starting to evaluate results - found in " << path_to_prediction.c_str() << endl;
   // run evaluation
-  cout << "***************************************************** EXITING CPP EVAL CODE *******************" << endl;
   if (eval(path_to_prediction, path_to_gt)) {
     cout << "CPP EVAL: Evaluation sucessful! " << endl;
+    cout << "***************************************************** EXITING CPP EVAL CODE *******************" << endl;
     return 0;
   } else {
     cout << "CPP EVAL: An error occured while processing your results." << endl;
+    cout << "***************************************************** EXITING CPP EVAL CODE *******************" << endl;
     return 1;
   }
 
