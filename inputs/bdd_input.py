@@ -40,7 +40,7 @@ def extract_bboxes(label_file):
     bboxes = []
     labels = _gen_label_list(label_file)
     for label in labels:
-        logging.info("Reading label" , label)
+        logging.info("Reading label {}".format(label))
         if label[0] not in CLASSES:
             logging.warn("{} not in classes - skipping".format(label[0]))
             continue
