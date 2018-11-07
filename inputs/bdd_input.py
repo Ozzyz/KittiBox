@@ -16,7 +16,7 @@ import threading
 from collections import namedtuple
 
 
-CLASSES = ['car', 'pedestrian', 'cyclist', 'traffic_light', 'traffic_sign', 'truck']
+CLASSES = ['Car', 'Pedestrian', 'Cyclist', 'Traffic_light', 'Traffic_sign', 'Truck']
 CLASS_IDS = { CLASSES[x]: x for x in range(len(CLASSES))}
 
 def read_bdd_anno(label_file):
@@ -27,7 +27,7 @@ def read_bdd_anno(label_file):
     Returns:
         List of bboxes with associated class id
     """
-    logging.info("KittiBox bdd_input.py: Reading label file {}".format(label_file))
+    #logging.info("KittiBox bdd_input.py: Reading label file {}".format(label_file))
     
     return extract_bboxes(label_file)
 
@@ -37,15 +37,17 @@ def extract_bboxes(label_file):
     Extracts all values of interest from the bdd kitti label file and returns a list where
     each row is a bounding box for an object in the image.
     """
+    #logging.warn("Note! Only evaluating cars at the moment (bdd_input.py)")
     bboxes = []
     labels = _gen_label_list(label_file)
     for label in labels:
-        logging.info("Reading label {}".format(label))
-        if label[0] not in CLASSES:
-            logging.warn("{} not in classes - skipping".format(label[0]))
+        if label[0] != 'Car':
+        #if label[0] not in CLASSES:
+            #logging.warn("{} not in classes - skipping".format(label[0]))
             continue
         bbox_rect = extract_bbox_rect(label)
-        bbox_rect.classID = CLASSES.index(label[0])
+        bbox_rect.classID = 1
+        #bbox_rect.classID = CLASSES.index(label[0])
         bboxes.append(bbox_rect)
     return bboxes
 
@@ -79,7 +81,7 @@ def _augment_image(hypes, image):
     """Augments the given image by randomly applying brightness, contras, saturation and hue."""
     # Because these operations are not commutative, consider randomizing
     # randomize the order their operation.
-    logging.info("Augmenting image in KittiBox")
+    #logging.info("Augmenting image in KittiBox")
     augment_level = hypes['augment_level']
     if augment_level > 0:
         image = tf.image.random_brightness(image, max_delta=30)
@@ -159,7 +161,7 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
             #image_file = os.path.join(base_path, image_file)
             #gt_image_file = os.path.join(base_path, gt_image_file)
 
-            logging.info("Creating bdd annotations for im: {}, gt: {}".format(image_file, gt_image_file))
+            #logging.info("Creating bdd annotations for im: {}, gt: {}".format(image_file, gt_image_file))
             anno = _create_bdd_annotations(image_file, gt_image_file)
 
             im = _load_and_resize_image(image_file, anno, hypes)
@@ -291,7 +293,7 @@ def inputs(hypes, q, phase):
         assert("Bad phase: {}".format(phase))
 
 def _rescale_boxes(current_shape, anno, target_height, target_width):
-    logging.info("Rescaling box {} to ({}, {})".format(current_shape, target_height, target_width))
+    #logging.info("Rescaling box {} to ({}, {})".format(current_shape, target_width, target_height))
     x_scale = target_width / float(current_shape[1])
     y_scale = target_height / float(current_shape[0])
     for r in anno.rects:

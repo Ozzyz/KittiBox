@@ -35,7 +35,7 @@ enum CLASSES{CAR=0, PEDESTRIAN=1, CYCLIST=2, TRAFFIC_LIGHT=3, TRAFFIC_SIGN=4, TR
 
 // parameters varying per class
 vector<string> CLASS_NAMES;
-const double   MIN_OVERLAP[6] = {0.005, 0.5, 0.5, 0.5, 0.5, 0.5};                  // the minimum overlap required for evaluation
+const double   MIN_OVERLAP[6] = {0.2, 0.3, 0.3, 0.5, 0.5, 0.5};                  // the minimum overlap required for evaluation
 
 // no. of recall steps that should be evaluated (discretized)
 const double N_SAMPLE_PTS = 10;
@@ -78,9 +78,12 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
                    &trash,         &trash,    &trash,      &d.thresh);
     if(num_args == 16){
       d.box.type = str;
+      if(!strcasecmp(d.box.type.c_str(), "car")){
+         // TODO: Remove this once we take multiple clases
+         detections.push_back(d);
+      }
       //cout << "loadDetections: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << d.box.x1 << " "<< d.box.y1 << " " << d.box.x2 << " "<< d.box.y2 << endl;
       //cout << "SUCESS:!!! Values read: " << str << ", alpha, dbox (x1, y1, x2, y2), tresh " << d.box.alpha << d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << d.thresh <<  endl;
-      detections.push_back(d);
       // orientation=-10 is invalid, AOS is not evaluated if at least one orientation is invalid
       if(d.box.alpha==-10)
         compute_aos = false;
@@ -131,10 +134,12 @@ vector<tGroundtruth> loadGroundtruth(string file_name,bool &success) {
                    &trash,      &trash,        &trash,       &trash, 
                    &trash,      &trash,        &trash );
     if(num_args == 15){
-       cout << "Values read: " << str << ",alpha,  dbox (x1, y1, x2, y2) " << g.box.alpha <<  g.box.x1 << g.box.y1 << g.box.x2 << g.box.y2 << endl;
+       cout << "Values read: " << str << ",alpha,  dbox (x1, y1, x2, y2) " << g.box.alpha << ", " <<  g.box.x1 << ", " <<  g.box.y1 << ", " <<  g.box.x2 << ", " <<  g.box.y2 << endl;
       g.box.type = str;
       //cout << "loadGroundTruths: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << g.box.x1 << " "<< g.box.y1 << " " << g.box.x2 << " "<< g.box.y2 << endl;
-      groundtruth.push_back(g);
+      if(!strcasecmp(g.box.type.c_str(), "car")){
+          groundtruth.push_back(g);
+      }
     }else{
       cout << "Could not load ground truths in fscanf of file " << file_name << ", are you sure it is formatted correctly? (15 values per line) " <<  endl; 
     }
@@ -209,9 +214,9 @@ inline double boxoverlap(tBox a, tBox b, int32_t criterion=-1){
   else if(criterion==1) // bbox_b
     o = inter / b_area;
 
-  cout << "Calculating overlap between box 1: (" << a.x1 << ", " << a.y1 << ", " << a.x2 << ", " << a.y2;
-  cout << ") and box 2: (" << b.x1 << ", " << b.y1 << ", " << b.x2 << ", " << b.y2 << endl;
-  cout << "Overlap is : " << o << endl;
+  //cout << "Calculating overlap between box 1: (" << a.x1 << ", " << a.y1 << ", " << a.x2 << ", " << a.y2;
+  //cout << ") and box 2: (" << b.x1 << ", " << b.y1 << ", " << b.x2 << ", " << b.y2 << endl;
+  //cout << "Overlap is : " << o << endl;
   // overlap
   return o;
 }
@@ -262,7 +267,6 @@ void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vect
   // extract ground truth bounding boxes for current evaluation class
   
   cout << "computeStatistics: Computing TP, FP and FN" << endl;
-  cout << "GT size " << gt.size() << endl;
     for (int32_t i=0;i<gt.size(); i++){
     // only bounding boxes with a minimum height are used for evaluation
     double height = gt[i].box.y2 - gt[i].box.y1;
@@ -338,7 +342,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
   vector<double> delta;            // holds angular difference for TPs (needed for AOS evaluation)
   vector<bool> assigned_detection; // holds wether a detection was assigned to a valid or ignored ground truth
   assigned_detection.assign(det.size(), false);
-  cout << "Assigning assigned_detection size: " << det.size() << endl;
+  cout << "\tAssigning assigned_detection size: " << det.size() << endl;
   vector<bool> ignored_threshold;
   ignored_threshold.assign(det.size(), false); // holds detections with a threshold lower than thresh if FP are computed
 
@@ -351,7 +355,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
     }
   }
   // evaluate all ground truth boxes
-  cout << "computeStatistics: Entering iteration over all gts in vector (" << gt.size() << ")" <<  endl;
+  cout << "\tcomputeStatistics: Entering iteration over all gts in vector (" << gt.size() << ")" <<  endl;
   for(int32_t i=0; i<gt.size(); i++){
 
     // this ground truth is not of the current or a neighboring class and therefore ignored
@@ -371,10 +375,10 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
 
       // detections not of the current class, already assigned or with a low threshold are ignored
       if(ignored_det[j]==-1){
-        cout << "\tSkipping " << j << "  because of ignored det == -1" << endl;
+        //cout << "\tSkipping " << j << "  because of ignored det == -1" << endl;
         continue;}
       if(assigned_detection[j]){
-        cout << "\tSkipping " << j << " because of already assigned detection" << endl;
+        //cout << "\tSkipping " << j << " because of already assigned detection" << endl;
         continue;}
       if(ignored_threshold[j]){
         //cout << "Skipping " << j << " because of ignored threshold" << endl;
@@ -434,7 +438,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
   // if FP are requested, consider stuff area
   if(compute_fp){
 
-    cout << "computeStatistics: Computing fp line 410" << endl;
+    cout << "\tcomputeStatistics: Computing fp line 410" << endl;
     // count fp
     for(int32_t i=0; i<det.size(); i++){
 
@@ -459,6 +463,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
         // compute overlap and assign to stuff area, if overlap exceeds class specific value
         double overlap = boxoverlap(det[j].box, dc[i].box, 0);
         if(overlap>MIN_OVERLAP[current_class]){
+          cout << "\t Overlap: " << overlap << endl;
           assigned_detection[j] = true;
           nstuff++;
         }
@@ -490,8 +495,8 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
         stat.similarity = -1;
     }
   }
-  cout << "Call to computeStatistics finished" << endl;
-  cout << "Stat values: " <<endl;
+  cout << "\tCall to computeStatistics finished" << endl;
+  cout << "\tStat values: " <<endl;
   cout << "\t\t stat FN: " << stat.fn << endl;
   cout << "\t\t stat TP: " << stat.tp << endl;
   cout << "\t\t stat similarity: " << stat.similarity << endl;

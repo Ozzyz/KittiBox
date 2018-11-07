@@ -55,7 +55,7 @@ def compute_rectangels(H, confidences, boxes, use_stitching=False, rnn_len=1, mi
                                              rnn_len,
                                              H['num_classes']))
     cell_pix_size = H['region_size']
-    logging.info("Shape of Boxes: {}, confidences: {}".format(boxes_r.shape, confidences_r.shape))
+    #logging.info("Shape of Boxes: {}, confidences: {}".format(boxes_r.shape, confidences_r.shape))
     all_rects = [[[] for _ in range(H["grid_width"])] for _ in range(H["grid_height"])]
     for n in range(rnn_len):
         for y in range(H["grid_height"]):
@@ -71,9 +71,8 @@ def compute_rectangels(H, confidences, boxes, use_stitching=False, rnn_len=1, mi
     all_rects_r = [r for row in all_rects for cell in row for r in cell]
     if use_stitching:
         from stitch_wrapper import stitch_rects
-        logging.info("Number of rects before stitching: {}".format(len(all_rects)))
-        acc_rects = stitch_rects(all_rects, tau)
-        logging.info("Stitched rects: {}".format(len(acc_rects)))
+        acc_rects = stitch_rects(all_rects, tau) 
+        #logging.info("Number of rects before/after stitching: {} -> {}".format(len(all_rects), len(acc_rects)))
     else:
         acc_rects = all_rects_r
 
@@ -105,7 +104,6 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
                 h = bbox[3]
                 conf = np.max(confidences_r[0, y, x, n, 1:])
                 new_rect = Rect(abs_cx, abs_cy, w, h, conf)
-                logging.info("Converted bbox {} to {}".format(bbox, new_rect)) 
                 all_rects[y][x].append(new_rect)
 
     all_rects_r = [r for row in all_rects for cell in row for r in cell]
@@ -122,7 +120,6 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
     im = Image.fromarray(image.astype('uint8'))
     draw = ImageDraw.Draw(im)
     logging.info("Number of rects: {}".format(len(acc_rects)))
-    logging.info("Sampled rectangles: {}".format(acc_rects))
     for rect_set, color in pairs:
         for rect in rect_set:
                 _draw_rect(draw, rect, color)
