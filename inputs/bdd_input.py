@@ -41,13 +41,11 @@ def extract_bboxes(label_file):
     bboxes = []
     labels = _gen_label_list(label_file)
     for label in labels:
-        if label[0] != 'Car':
-        #if label[0] not in CLASSES:
-            #logging.warn("{} not in classes - skipping".format(label[0]))
+        if label[0] not in CLASSES:
+            logging.warn("{} not in classes - skipping".format(label[0]))
             continue
         bbox_rect = extract_bbox_rect(label)
-        bbox_rect.classID = 1
-        #bbox_rect.classID = CLASSES.index(label[0])
+        bbox_rect.classID = CLASSES.index(label[0]) + 1 # We want classIDs to start from 1
         bboxes.append(bbox_rect)
     return bboxes
 
