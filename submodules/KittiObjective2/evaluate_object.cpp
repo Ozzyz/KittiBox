@@ -739,6 +739,39 @@ inline bool exists_test0(const std::string &name)
   return (access(name.c_str(), F_OK) != -1);
 }
 
+
+int32_t eval_class_and_plot(bool do_eval_class, CLASSES CLASS_TYPE, string result_dir, string plot_dir, vector<vector<tGroundtruth>> &groundtruth, vector<vector<tDetection>> &detections, bool compute_aos)
+{
+  /* Evaluates the given class if the bool eval_class is set, and saves the outcome of the evaluation from save class to
+  plot and file */
+  // eval traffic lights
+  // holds pointers for result files
+  FILE *fp_det = 0, *fp_ori = 0;
+
+  if (do_eval_class)
+  {
+    cout << "Evaluating TRAFFIC_LIGHTs..." << endl;
+    fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[CLASS_TYPE] + "_detection.txt").c_str(), "w");
+    if (compute_aos)
+      fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[CLASS_TYPE] + "_orientation.txt").c_str(), "w");
+    vector<double> precision[3], aos[3];
+    if (!eval_class(fp_det, fp_ori, CLASS_TYPE, groundtruth, detections, compute_aos, precision[0], aos[0], EASY) ||
+        !eval_class(fp_det, fp_ori, CLASS_TYPE, groundtruth, detections, compute_aos, precision[1], aos[1], MODERATE) ||
+        !eval_class(fp_det, fp_ori, CLASS_TYPE, groundtruth, detections, compute_aos, precision[2], aos[2], HARD))
+    {
+      cout << CLASS_NAMES[CLASS_TYPE] << " evaluation failed." << endl;
+      return false;
+    }
+    fclose(fp_det);
+    saveAndPlotPlots(plot_dir, CLASS_NAMES[CLASS_TYPE] + "_detection", CLASS_NAMES[CLASS_TYPE], precision, 0);
+    cout << "Finished saving plots with class type " << CLASS_NAMES[CLASS_TYPE] << endl;
+    if (compute_aos)
+    {
+      fclose(fp_ori);
+      saveAndPlotPlots(plot_dir, CLASS_NAMES[CLASS_TYPE] + "_orientation", CLASS_NAMES[CLASS_TYPE], aos, 1);
+    }
+  }
+}
 #include <fstream>
 #include <experimental/filesystem>
 
@@ -821,39 +854,6 @@ bool eval(string path, string path_to_gt)
   eval_class_and_plot(eval_truck, TRUCK, result_dir, plot_dir, groundtruth, detections, compute_aos);
   // success
   return true;
-}
-
-int32_t eval_class_and_plot(bool do_eval_class, CLASSES CLASS_TYPE, string result_dir, string plot_dir, vector<vector<tGroundtruth>> &groundtruth, vector<vector<tDetection>> &detections, bool compute_aos)
-{
-  /* Evaluates the given class if the bool eval_class is set, and saves the outcome of the evaluation from save class to
-  plot and file */
-  // eval traffic lights
-  // holds pointers for result files
-  FILE *fp_det = 0, *fp_ori = 0;
-
-  if (do_eval_class)
-  {
-    cout << "Evaluating TRAFFIC_LIGHTs..." << endl;
-    fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[CLASS_TYPE] + "_detection.txt").c_str(), "w");
-    if (compute_aos)
-      fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[CLASS_TYPE] + "_orientation.txt").c_str(), "w");
-    vector<double> precision[3], aos[3];
-    if (!eval_class(fp_det, fp_ori, CLASS_TYPE, groundtruth, detections, compute_aos, precision[0], aos[0], EASY) ||
-        !eval_class(fp_det, fp_ori, CLASS_TYPE, groundtruth, detections, compute_aos, precision[1], aos[1], MODERATE) ||
-        !eval_class(fp_det, fp_ori, CLASS_TYPE, groundtruth, detections, compute_aos, precision[2], aos[2], HARD))
-    {
-      cout << CLASS_NAMES[CLASS_TYPE] << " evaluation failed." << endl;
-      return false;
-    }
-    fclose(fp_det);
-    saveAndPlotPlots(plot_dir, CLASS_NAMES[CLASS_TYPE] + "_detection", CLASS_NAMES[CLASS_TYPE], precision, 0);
-    cout << "Finished saving plots with class type " << CLASS_NAMES[CLASS_TYPE] << endl;
-    if (compute_aos)
-    {
-      fclose(fp_ori);
-      saveAndPlotPlots(plot_dir, CLASS_NAMES[CLASS_TYPE] + "_orientation", CLASS_NAMES[CLASS_TYPE], aos, 1);
-    }
-  }
 }
 
 int32_t main(int32_t argc, char *argv[])

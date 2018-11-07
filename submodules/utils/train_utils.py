@@ -115,14 +115,16 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
 
     if not show_removed:
         all_rects_r = []
-
+    
+    # TODO:  One color for each classtype 
+    #COLORS = [(255, 0, 0), (0,255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
     pairs = [(all_rects_r, color_removed), (acc_rects, color_acc)]
     im = Image.fromarray(image.astype('uint8'))
     draw = ImageDraw.Draw(im)
     logging.info("Number of rects: {}".format(len(acc_rects)))
     for rect_set, color in pairs:
         for rect in rect_set:
-                _draw_rect(draw, rect, color)
+                _draw_rect(draw, rect, color_acc)
 
     image = np.array(im).astype('float32')
 

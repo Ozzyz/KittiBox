@@ -206,9 +206,6 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
             use_stitching=True, rnn_len=hypes['rnn_len'],
             min_conf=0.50, tau=hypes['tau'], color_acc=(0, 255, 0))
         
-        num = random.randint(0,100)
-        filename = "{}.png".format(num)
-        scp.misc.imsave(filename, new_img)
 
         if validation and i % 2 == 0:
             image_name = os.path.basename(pred_anno.imageName)
