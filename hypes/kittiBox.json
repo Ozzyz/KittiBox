@@ -7,18 +7,18 @@
     "evaluator_file" : "../evals/bdd_eval.py"
     },
     "data": {
-        "train_file": "img_bbox_train.txt",
-        "val_file": "img_bbox_val.txt",
+        "train_file": "img_bbox_train_small.txt",
+        "val_file": "img_bbox_val_small.txt",
         "truncate_data": false,
         "eval_cmd": "../submodules/KittiObjective2/./evaluate_object2",
         "label_dir": "bdd100k/kitti_labels/val"
     },
     "logging": {
-        "display_iter": 2,
-        "eval_iter": 5,
-        "write_iter": 5,
-        "save_iter": 5,
-        "image_iter": 5
+        "display_iter": 200,
+        "eval_iter": 200,
+        "write_iter": 200,
+        "save_iter": 200,
+        "image_iter": 200
     },
     "arch": {
         "deep_feat": "pool5"

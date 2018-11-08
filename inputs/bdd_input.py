@@ -16,8 +16,10 @@ import threading
 from collections import namedtuple
 
 
-CLASSES = ['Car', 'Pedestrian', 'Cyclist', 'Traffic_light', 'Traffic_sign', 'Truck']
+CLASSES = ['Car', 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
 CLASS_IDS = { CLASSES[x]: x for x in range(len(CLASSES))}
+
+USED_CLASSES = [False for x in range(len(CLASSES))]
 
 def read_bdd_anno(label_file):
     """Reads a BDD100K annotation file (in kitti format)

@@ -39,8 +39,8 @@ const double MAX_TRUNCATION[NUM_CLASSES] = {1000, 1000, 1000, 0.2, 0.2, 0.2}; //
 enum CLASSES
 {
   CAR = 0,
-  PEDESTRIAN = 1,
-  CYCLIST = 2,
+  PERSON = 1,
+  BIKE = 2,
   TRAFFIC_LIGHT = 3,
   TRAFFIC_SIGN = 4,
   TRUCK = 5
@@ -57,8 +57,8 @@ const double N_SAMPLE_PTS = 10;
 void initGlobals()
 {
   CLASS_NAMES.push_back("car");
-  CLASS_NAMES.push_back("pedestrian");
-  CLASS_NAMES.push_back("cyclist");
+  CLASS_NAMES.push_back("person");
+  CLASS_NAMES.push_back("bike");
   CLASS_NAMES.push_back("traffic_light");
   CLASS_NAMES.push_back("traffic_sign");
   CLASS_NAMES.push_back("truck");
@@ -68,7 +68,7 @@ void initGlobals()
 FUNCTIONS TO LOAD DETECTION AND GROUND TRUTH DATA ONCE, SAVE RESULTS
 =======================================================================*/
 // TODO: Expand this function to include all classes in bdd100k
-vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eval_car, bool &eval_pedestrian, bool &eval_cyclist, bool &eval_trafficlight, bool &eval_trafficsign, bool &eval_truck, bool &success)
+vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eval_car, bool &eval_person, bool &eval_bike, bool &eval_trafficlight, bool &eval_trafficsign, bool &eval_truck, bool &success)
 {
   /* Loads the detections from the model from the given filename.
      Returns a vector of detections where each element is of type tDetection struct.
@@ -110,10 +110,10 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
       // a class is only evaluated if it is detected at least once
       if (!eval_car && !strcasecmp(d.box.type.c_str(), "car"))
         eval_car = true;
-      if (!eval_pedestrian && !strcasecmp(d.box.type.c_str(), "pedestrian"))
-        eval_pedestrian = true;
-      if (!eval_cyclist && !strcasecmp(d.box.type.c_str(), "cyclist"))
-        eval_cyclist = true;
+      if (!eval_person && !strcasecmp(d.box.type.c_str(), "person"))
+        eval_person = true;
+      if (!eval_bike && !strcasecmp(d.box.type.c_str(), "bike"))
+        eval_bike = true;
       if (!eval_trafficlight && !strcasecmp(d.box.type.c_str(), "traffic_light"))
         eval_trafficlight = true;
       if (!eval_trafficsign && !strcasecmp(d.box.type.c_str(), "traffic_sign"))
@@ -804,7 +804,7 @@ bool eval(string path, string path_to_gt)
 
   // holds wether orientation similarity shall be computed (might be set to false while loading detections)
   // and which labels where provided by this submission
-  bool compute_aos = false, eval_car = true, eval_pedestrian = false, eval_cyclist = false;
+  bool compute_aos = false, eval_car = true, eval_person = false, eval_bike = false;
   bool eval_trafficlight = true, eval_trafficsign = true, eval_truck = true;
   // for all images read groundtruth and detections
   cout << "Loading detections..." << endl;
@@ -829,7 +829,7 @@ bool eval(string path, string path_to_gt)
     cout << "\t eval(): Trying to load ground truths from " << gt_dir + "/" + file_name << endl;
     cout << "\t eval(): Trying to load detections from " << result_dir + "/" + file_name << endl;
     vector<tGroundtruth> gt = loadGroundtruth(gt_dir + "/" + file_name, gt_success);
-    vector<tDetection> det = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_pedestrian, eval_cyclist, eval_trafficlight, eval_trafficsign, eval_truck, det_success);
+    vector<tDetection> det = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_person, eval_bike, eval_trafficlight, eval_trafficsign, eval_truck, det_success);
     groundtruth.push_back(gt);
     detections.push_back(det);
 
@@ -847,8 +847,8 @@ bool eval(string path, string path_to_gt)
   }
   cout << "Done. " << endl;
   eval_class_and_plot(eval_car, CAR, result_dir, plot_dir, groundtruth, detections, compute_aos);
-  eval_class_and_plot(eval_pedestrian, PEDESTRIAN, result_dir, plot_dir, groundtruth, detections, compute_aos);
-  eval_class_and_plot(eval_cyclist, CYCLIST, result_dir, plot_dir, groundtruth, detections, compute_aos);
+  eval_class_and_plot(eval_person, PERSON, result_dir, plot_dir, groundtruth, detections, compute_aos);
+  eval_class_and_plot(eval_bike, BIKE, result_dir, plot_dir, groundtruth, detections, compute_aos);
   eval_class_and_plot(eval_trafficsign, TRAFFIC_SIGN, result_dir, plot_dir, groundtruth, detections, compute_aos);
   eval_class_and_plot(eval_trafficlight, TRAFFIC_LIGHT, result_dir, plot_dir, groundtruth, detections, compute_aos);
   eval_class_and_plot(eval_truck, TRUCK, result_dir, plot_dir, groundtruth, detections, compute_aos);
