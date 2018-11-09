@@ -109,7 +109,7 @@ def evaluate(hypes, sess, image_pl, softmax):
             line = f.readline()
             if not line:
                 continue
-            logging.info("Reading line: {}".format(line))
+            #logging.info("Reading line: {}".format(line))
             result = np.array(line.rstrip().split(" ")).astype(float)
             mean = np.mean(result)
             eval_list.append(("val   " + mode, mean))

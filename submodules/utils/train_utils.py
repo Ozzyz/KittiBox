@@ -18,7 +18,7 @@ def rescale_boxes(current_shape, anno, target_height, target_width):
     
     x_scale = target_width / float(current_shape[1])
     y_scale = target_height / float(current_shape[0])
-    logging.info("Rescaling boxes - x_scale: {}, y_scale: {} (current shape of image: {}".format(x_scale, y_scale, current_shape))
+    #logging.info("Rescaling boxes - x_scale: {}, y_scale: {} (current shape of image: {}".format(x_scale, y_scale, current_shape))
     for r in anno.rects:
         #assert r.x1 < r.x2
         r.x1 *= x_scale
@@ -121,7 +121,7 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
     pairs = [(all_rects_r, color_removed), (acc_rects, color_acc)]
     im = Image.fromarray(image.astype('uint8'))
     draw = ImageDraw.Draw(im)
-    logging.info("Number of rects: {}".format(len(acc_rects)))
+    #logging.info("Number of rects: {}".format(len(acc_rects)))
     for rect_set, color in pairs:
         for rect in rect_set:
                 _draw_rect(draw, rect, color_acc)
