@@ -55,6 +55,7 @@ def compute_rectangels(H, confidences, boxes, use_stitching=False, rnn_len=1, mi
                                              rnn_len,
                                              H['num_classes']))
     cell_pix_size = H['region_size']
+    logging.info("Shape of confidences {}".format(confidences_r))
     #logging.info("Shape of Boxes: {}, confidences: {}".format(boxes_r.shape, confidences_r.shape))
     all_rects = [[[] for _ in range(H["grid_width"])] for _ in range(H["grid_height"])]
     for n in range(rnn_len):
@@ -65,8 +66,14 @@ def compute_rectangels(H, confidences, boxes, use_stitching=False, rnn_len=1, mi
                 abs_cy = int(bbox[1]) + cell_pix_size/2 + cell_pix_size * y
                 w = bbox[2]
                 h = bbox[3]
+                # TODO: Find out which index gave max, and give the class label accordingly to Rect
+                # Ignore first index since that is background/DontCare
                 conf = np.max(confidences_r[0, y, x, n, 1:])
-                all_rects[y][x].append(Rect(abs_cx,abs_cy,w,h,conf))
+                #logging.info("Confidences values: {}".format(confidences_r[0, y,x,n,1:]))
+                class_idx = np.argmax(confidences_r[0, y, x, n, 1:])
+                if class_idx != 0: # Since 0 is car - only log other classes since they are more rare
+                    logging.info("Max rect of Class ID {}".format(class_idx))
+                all_rects[y][x].append(Rect(abs_cx,abs_cy,w,h,conf,class_idx))
 
     all_rects_r = [r for row in all_rects for cell in row for r in cell]
     if use_stitching:
@@ -103,7 +110,9 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
                 w = bbox[2]
                 h = bbox[3]
                 conf = np.max(confidences_r[0, y, x, n, 1:])
-                new_rect = Rect(abs_cx, abs_cy, w, h, conf)
+                class_idx = np.argmax(confidences_r[0, y, x, n, 1:])
+                #logging.info("Confidence argmax idx (classid): {}".format(class_idx))
+                new_rect = Rect(abs_cx, abs_cy, w, h, conf, class_idx)
                 all_rects[y][x].append(new_rect)
 
     all_rects_r = [r for row in all_rects for cell in row for r in cell]
@@ -117,14 +126,19 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
         all_rects_r = []
     
     # TODO:  One color for each classtype 
-    #COLORS = [(255, 0, 0), (0,255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
+    COLORS = [(255, 0, 0), (0,255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
     pairs = [(all_rects_r, color_removed), (acc_rects, color_acc)]
     im = Image.fromarray(image.astype('uint8'))
     draw = ImageDraw.Draw(im)
     #logging.info("Number of rects: {}".format(len(acc_rects)))
     for rect_set, color in pairs:
         for rect in rect_set:
-                _draw_rect(draw, rect, color_acc)
+                if rect.class_id is None:
+                    logging.warn("Found rect without class id - drawing as default color {}".format(color_acc))
+                    _draw_rect(draw, rect, color_acc)
+                else:
+                    draw_color = COLORS[rect.class_id]
+                    _draw_rect(draw, rect, draw_color)
 
     image = np.array(im).astype('float32')
 

@@ -16,9 +16,9 @@
     "logging": {
         "display_iter": 200,
         "eval_iter": 200,
-        "write_iter": 200,
-        "save_iter": 200,
-        "image_iter": 200
+        "write_iter": 1000,
+        "save_iter": 1000,
+        "image_iter": 1000
     },
     "arch": {
         "deep_feat": "pool5"

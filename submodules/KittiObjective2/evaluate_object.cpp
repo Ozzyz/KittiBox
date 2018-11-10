@@ -185,7 +185,7 @@ vector<tGroundtruth> loadGroundtruth(string file_name, bool &success)
 void saveStats(const vector<double> &precision, const vector<double> &aos, FILE *fp_det, FILE *fp_ori)
 {
   /* Writes the precision vector to fp_det, and aos-vector to fp_ori if they are non-empty */
-  cout << "Saving stats to file " << endl;
+  //cout << "Saving stats to file " << endl;
   // save precision to file
   if (precision.empty())
   {
@@ -557,8 +557,8 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
         stat.similarity = -1;
     }
   }
-  cout << "\tCall to computeStatistics finished" << endl;
-  cout << "\tStat values: (FN, TP, similarity): " << stat.fn << ", " << stat.tp << ", " << stat.similarity <<  endl;
+  //cout << "\tCall to computeStatistics finished" << endl;
+  //cout << "\tStat values: (FN, TP, similarity): " << stat.fn << ", " << stat.tp << ", " << stat.similarity <<  endl;
   return stat;
 }
 
@@ -568,7 +568,6 @@ EVALUATE CLASS-WISE
 // TODO: Change the variable N_TESTIMAGES to the correct number for bdd100k
 bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<vector<tGroundtruth>> &groundtruth, const vector<vector<tDetection>> &detections, bool compute_aos, vector<double> &precision, vector<double> &aos, DIFFICULTY difficulty)
 {
-  std::cout << "Evaluating class " << CLASS_NAMES[current_class] << std::endl;
   // init
   int32_t n_gt = 0;                                // total no. of gt (denominator of recall)
   vector<double> v, thresholds;                    // detection scores, evaluated for recall discretization
@@ -654,7 +653,7 @@ bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<
 
   // save statisics and finish with success
   saveStats(precision, aos, fp_det, fp_ori);
-  cout << "Sucessfully called saveStats" << endl;
+  //cout << "Sucessfully called saveStats" << endl;
   return true;
 }
 
