@@ -16,6 +16,10 @@ sftp-config.json
 
 run*.sh
 
+# Data folder
+DATA/
+RUNS/
+
 # Distribution / packaging
 .Python
 env/
