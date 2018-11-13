@@ -43,13 +43,21 @@ def make_img_dir(hypes):
     return val_dir
 
 
+CLASSES = ['Car', 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
+
 def write_rects(rects, filename):
     # TODO: Expand this to write bboxes of different classes
-    #logging.info("Writing rects to file {}".format(filename))
+    logging.info("Writing rects to file {}".format(filename))
     with open(filename, 'w') as f:
         for rect in rects:
-            string = "car 0 1 0 %f %f %f %f 0 0 0 0 0 0 0 %f" % \
-                (rect.x1, rect.y1, rect.x2, rect.y2, rect.score)
+            class_idx = rect.classID
+            # By default, assume car if class id not assigned (but this should not happen)
+            if class_idx is None:
+                logging.warn("Found rect without class id in evals.py")
+                class_idx = 0
+            class_str = CLASSES[class_idx]
+            string = "%s 0 1 0 %f %f %f %f 0 0 0 0 0 0 0 %f" % \
+                (class_str, rect.x1, rect.y1, rect.x2, rect.y2, rect.score)
             print(string, file=f)
 
 

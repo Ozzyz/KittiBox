@@ -19,8 +19,8 @@ STATIC EVALUATION PARAMETERS
 
 // holds the number of test images on the server
 // FIXME: Change this to be the number of test images of bdd100k
-int32_t N_MAXIMAGES = 100;
-int32_t N_TESTIMAGES = 100;
+int32_t N_MAXIMAGES = 1000;
+int32_t N_TESTIMAGES = 1000;
 const int32_t NUM_CLASSES = 6;
 // easy, moderate and hard evaluation level
 enum DIFFICULTY

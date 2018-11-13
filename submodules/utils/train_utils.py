@@ -133,12 +133,14 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
     #logging.info("Number of rects: {}".format(len(acc_rects)))
     for rect_set, color in pairs:
         for rect in rect_set:
-                if rect.class_id is None:
-                    logging.warn("Found rect without class id - drawing as default color {}".format(color_acc))
-                    _draw_rect(draw, rect, color_acc)
-                else:
-                    draw_color = COLORS[rect.class_id]
-                    _draw_rect(draw, rect, draw_color)
+            if rect.confidence < min_conf:
+                continue
+            if rect.class_id is None:
+                logging.warn("Found rect without class id - drawing as default color {}".format(color_acc))
+                _draw_rect(draw, rect, color_acc)
+            else:
+                draw_color = COLORS[rect.class_id]
+                _draw_rect(draw, rect, draw_color)
 
     image = np.array(im).astype('float32')
 
@@ -150,6 +152,7 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
         r.y1 = rect.cy - rect.height/2.
         r.y2 = rect.cy + rect.height/2.
         r.score = rect.true_confidence
+        r.classID = rect.class_id
         rects.append(r)
 
     return image, rects
