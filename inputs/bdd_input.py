@@ -47,7 +47,7 @@ def extract_bboxes(label_file):
             logging.warn("{} not in classes - skipping".format(label[0]))
             continue
         bbox_rect = extract_bbox_rect(label)
-        bbox_rect.classID = CLASSES.index(label[0]) + 1 # We want classIDs to start from 1
+        bbox_rect.classID = CLASSES.index(label[0]) + 1 # Classes are numbered from 1 to N
         bboxes.append(bbox_rect)
     return bboxes
 
@@ -168,8 +168,8 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
 
             if jitter:
                 im, anno = _apply_jitter(im, anno, hypes)
-
-            pos_list = [rect for rect in anno.rects if rect.classID == 1]
+            # Accept all classes that are not 'DontCare'
+            pos_list = [rect for rect in anno.rects if rect.classID != -1]
 
             fake_anno = namedtuple('fake_anno_object', ['rects'])
             pos_anno = fake_anno(pos_list)

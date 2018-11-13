@@ -55,7 +55,7 @@ def write_rects(rects, filename):
             if class_idx is None:
                 logging.warn("Found rect without class id in evals.py")
                 class_idx = 0
-            class_str = CLASSES[class_idx]
+            class_str = CLASSES[class_idx - 1]
             string = "%s 0 1 0 %f %f %f %f 0 0 0 0 0 0 0 %f" % \
                 (class_str, rect.x1, rect.y1, rect.x2, rect.y2, rect.score)
             print(string, file=f)
