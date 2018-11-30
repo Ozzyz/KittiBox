@@ -158,8 +158,8 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
         # Iterate through all files, optionally applying jitter, yielding images masks and bboxes for each
         for file in files:
             image_file, gt_image_file = file.split(" ")
-            #image_file = os.path.join(base_path, image_file)
-            #gt_image_file = os.path.join(base_path, gt_image_file)
+            image_file = os.path.join(base_path, image_file)
+            gt_image_file = os.path.join(base_path, gt_image_file)
 
             #logging.info("Creating bdd annotations for im: {}, gt: {}".format(image_file, gt_image_file))
             anno = _create_bdd_annotations(image_file, gt_image_file)

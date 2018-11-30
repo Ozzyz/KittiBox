@@ -143,7 +143,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
         image_file = file.split(" ")[0]
         if not validation and random.random() > 0.2:
             continue
-        #image_file = os.path.join(base_path, image_file)
+        image_file = os.path.join(base_path, image_file)
         orig_img = scp.misc.imread(image_file)[:, :, :3]
         img = scp.misc.imresize(orig_img, (hypes["image_height"],
                                            hypes["image_width"]),

@@ -182,8 +182,8 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
     pred_annolist = AnnLib.AnnoList()
     #logging.info("Reading lines in kitti_txt: {}".format(kitti_txt))
     files = [line.rstrip() for line in open(kitti_txt)]
-    #base_path = os.path.realpath(os.path.dirname(kitti_txt))
-    base_path = "/notebooks"
+    base_path = os.path.realpath(os.path.dirname(kitti_txt))
+    #base_path = "/notebooks"
     # In order to evaluate fps after each run, define variables in front,
     # and then assign them within the loop
     feed = None
