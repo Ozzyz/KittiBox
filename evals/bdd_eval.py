@@ -26,6 +26,7 @@ from utils.annolist import AnnotationLib as AnnLib
 import logging
 import sys
 
+
 def make_val_dir(hypes, validation=True):
     if validation:
         val_dir = os.path.join(hypes['dirs']['output_dir'], 'val_out')
@@ -44,6 +45,7 @@ def make_img_dir(hypes):
 
 
 CLASSES = ['Car', 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
+
 
 def write_rects(rects, filename):
     # TODO: Expand this to write bboxes of different classes
@@ -77,6 +79,7 @@ def draw_rects(image, rects, color=(0, 255, 0)):
 
     return np.array(image)
 
+
 def evaluate(hypes, sess, image_pl, softmax):
     logging.info("KittiBox: Evaluating images and bboxes")
     pred_annolist, image_list, dt, dt2 = get_results(
@@ -95,8 +98,9 @@ def evaluate(hypes, sess, image_pl, softmax):
     #logging.info("Trying to call kitti evaluation code - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
     try:
         cmd = [eval_cmd, val_path, label_dir]
-        popen = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
-        
+        popen = subprocess.Popen(
+            cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
+
     except OSError as error:
         logging.warning("Failed to run run kitti evaluation code.")
         logging.warning("Please run: `cd submodules/KittiObjective2/ && make`")
@@ -125,18 +129,20 @@ def evaluate(hypes, sess, image_pl, softmax):
     pred_annolist, image_list2, dt, dt2 = get_results(
         hypes, sess, image_pl, softmax, False)
     val_path = make_val_dir(hypes, False)
-    #label_dir = make_val_dir(hypes, True) # TODO: Check if this actually works as intended
+    # label_dir = make_val_dir(hypes, True) # TODO: Check if this actually works as intended
     cmd = [eval_cmd, val_path, label_dir]
-    logging.info("Trying to call kitti evaluation code (pt2) - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
+    logging.info(
+        "Trying to call kitti evaluation code (pt2) - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
     try:
-        popen = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
+        popen = subprocess.Popen(
+            cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
     except OSError as error:
         logging.warning("Failed to run second call to kitti evaluation code")
-    
+
     res_file = os.path.join(val_path, "stats_car_detection.txt")
-    
+
     with open(res_file) as f:
-        #logging.info("KittiBox eval: Trying to load res file: {}".format(res_file)) 
+        #logging.info("KittiBox eval: Trying to load res file: {}".format(res_file))
         for mode in ['easy', 'medium', 'hard']:
             line = f.readline()
             if not line:
@@ -187,12 +193,12 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
     # In order to evaluate fps after each run, define variables in front,
     # and then assign them within the loop
     feed = None
-    #logging.info("bdd_eval: Trying to read files {}".format(files)) 
+    #logging.info("bdd_eval: Trying to read files {}".format(files))
     for i, file in enumerate(files):
         image_file = file.split(" ")[0]
         if not validation and random.random() > 0.2:
             continue
-        
+
         image_file = os.path.join(base_path, image_file)
         orig_img = scp.misc.imread(image_file)[:, :, :3]
         img = scp.misc.imresize(orig_img, (hypes["image_height"],
@@ -213,14 +219,13 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
             np_pred_boxes, show_removed=False,
             use_stitching=True, rnn_len=hypes['rnn_len'],
             min_conf=0.50, tau=hypes['tau'], color_acc=(0, 255, 0))
-        
 
         if validation and i % 2 == 0:
             image_name = os.path.basename(pred_anno.imageName)
             image_name = os.path.join(img_dir, image_name)
-            #logging.info("*"*20)
+            # logging.info("*"*20)
             #logging.info("Save image {} to file ".format(image_name))
-            #logging.info("*"*20)
+            # logging.info("*"*20)
             scp.misc.imsave(image_name, new_img)
 
         if validation:
@@ -233,7 +238,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
         val_file = os.path.join(val_dir, val_file_name)
         #logging.info("KittiBox: Full name of val file: {}".format(val_file))
         # write rects to file
-
+        logging.info("All rects (bdd_eval): {}".format(rects))
         pred_anno.rects = rects
         pred_anno = utils.train_utils.rescale_boxes((
             hypes["image_height"],
@@ -247,13 +252,13 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
 
     logging.info("Starting to evaluate fps of network")
     if feed is None:
-        logging.warn("Feed is none - available files are {}".format(files)) 
+        logging.warn("Feed is none - available files are {}".format(files))
         image_file = os.path.join(base_path, image_file)
         orig_img = scp.misc.imread(image_file)[:, :, :3]
         img = scp.misc.imresize(orig_img, (hypes["image_height"],
                                            hypes["image_width"]),
                                 interp='cubic')
-        feed = {image_pl : img}
+        feed = {image_pl: img}
     logging.info("Feeding in image to fps test")
     start_time = time.time()
     for i in xrange(100):

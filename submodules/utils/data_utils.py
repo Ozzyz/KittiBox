@@ -1,3 +1,4 @@
+from PIL import Image, ImageDraw
 from __future__ import division
 from __future__ import print_function
 
@@ -18,7 +19,21 @@ import logging
 from collections import namedtuple
 
 
-def annotation_to_h5(hypes, a, cell_width, cell_height, max_len):
+def annotation_to_h5(hypes, anno, cell_width, cell_height, max_len):
+    """[summary]
+
+    Arguments:
+        hypes {dict} -- Hypes dictionary
+        anno {[type]} -- [description]
+        cell_width {[type]} -- [description]
+        cell_height {[type]} -- [description]
+        max_len {[type]} -- [description]
+
+    Returns:
+        [type] -- [description]
+    """
+
+    logging.info("Converting annotation to h5")
     region_size = hypes['region_size']
     assert hypes['region_size'] == hypes['image_height'] / hypes['grid_height']
     assert hypes['region_size'] == hypes['image_width'] / hypes['grid_width']
@@ -28,8 +43,10 @@ def annotation_to_h5(hypes, a, cell_width, cell_height, max_len):
 
     box_list = [[] for idx in range(cells_per_image)]
 
-    for cidx, c in enumerate(cell_regions):
-        box_list[cidx] = [r for r in a.rects if all(r.intersection(c))]
+    # Filter out boxes that do not interset with the given cell
+    for cell_idx, cell in enumerate(cell_regions):
+        box_list[cell_idx] = [
+            rect for rect in anno.rects if all(rect.intersection(cell))]
 
     boxes = np.zeros((1, cells_per_image, 4, max_len, 1), dtype=np.float)
     box_flags = np.zeros((1, cells_per_image, 1, max_len, 1), dtype=np.float)
@@ -59,9 +76,10 @@ def annotation_to_h5(hypes, a, cell_width, cell_height, max_len):
 
         for bidx, box in enumerate(sorted(unsorted_boxes, key=lambda x: x[0]**2 + x[1]**2)):
             boxes[0, cidx, :, bidx, 0] = box
-            box_flags[0, cidx, 0, bidx, 0] = max(
-                box_list[cidx][bidx].silhouetteID, 1)
-
+            # TODO: Should this be num_classes ?
+            # box_flags[0, cidx, 0, bidx, 0] = max(
+            #    box_list[cidx][bidx].silhouetteID, 1)
+            box_flags[0, cidx, 0, bidx, 0] = box.class_id
     return boxes, box_flags
 
 
@@ -73,7 +91,7 @@ def get_cell_grid(cell_width, cell_height, region_size):
             cidx = iy * cell_width + ix
             ox = (ix + 0.5) * region_size
             oy = (iy + 0.5) * region_size
-
+            # TODO: Find out if we should set class ids here
             r = al.AnnoRect(ox - 0.5 * region_size, oy - 0.5 * region_size,
                             ox + 0.5 * region_size, oy + 0.5 * region_size)
             r.track_id = cidx
@@ -139,8 +157,6 @@ def annotation_jitter(I, a_in, min_box_width=20, jitter_scale_min=0.9, jitter_sc
     rescaled_width = I1.shape[1]
     rescaled_height = I1.shape[0]
 
-
-
     px = round(0.5*(target_width)) - \
         round(0.5*(rescaled_width)) + jitter_offset_x
     py = round(0.5*(target_height)) - \
@@ -200,8 +216,6 @@ def annotation_jitter(I, a_in, min_box_width=20, jitter_scale_min=0.9, jitter_sc
     return I2, a
 
 
-from PIL import Image, ImageDraw
-
 rect = namedtuple('Rectangel', ['left', 'top', 'right', 'bottom'])
 
 
@@ -215,13 +229,18 @@ def _get_ignore_rect(x, y, cell_size):
 
 
 def draw_rect(draw, rect, color):
+
+    COLORS = [(255, 0, 0), (0, 255, 0), (0, 0, 255),
+              (255, 255, 0), (0, 255, 255), (255, 0, 255)]
     rect_cords = ((rect.left, rect.top), (rect.left, rect.bottom),
                   (rect.right, rect.bottom), (rect.right, rect.top),
                   (rect.left, rect.top))
-    draw.line(rect_cords, fill=color, width=2)
+    draw.line(rect_cords, fill=COLORS[rect.class_id], width=2)
 
 
 def draw_encoded(image, confs, mask=None, rects=None, cell_size=32):
+    # TODO: Find out if this should be drawn with class id
+    logging.info("Drawing encoded images (data utils)")
     image = image.astype('uint8')
     im = Image.fromarray(image)
 
