@@ -19,7 +19,7 @@ CLASS_COLORS = [(0, 0, 0), (255, 0, 0), (0,255, 0), (0, 0, 255), (255, 255, 0), 
 
 
 def rescale_boxes(current_shape, anno, target_height, target_width):
-    
+
     x_scale = target_width / float(current_shape[1])
     y_scale = target_height / float(current_shape[0])
     for r in anno.rects:
@@ -41,7 +41,9 @@ def _draw_rect(draw, rect, color):
     rect_cords = ((left, top), (left, bottom),
                   (right, bottom), (right, top),
                   (left, top))
-    draw.line(rect_cords, fill=color, width=2)
+    COLORS = [(255, 0, 0), (0,255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
+    draw_color = COLORS[rect.class_id]
+    draw.line(rect_cords, fill=draw_color, width=2)
 
 
 def compute_rectangels(H, confidences, boxes, use_stitching=False, rnn_len=1, min_conf=0.1, show_removed=True, tau=0.25):
@@ -148,7 +150,6 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
 
     if not show_removed:
         all_rects_r = []
-    
     pairs = [(all_rects_r, color_removed), (acc_rects, color_acc)]
     im = Image.fromarray(image.astype('uint8'))
     draw = ImageDraw.Draw(im)
@@ -193,10 +194,10 @@ def intersection(box1, box2):
     y1_max = tf.maximum(box1[:, 1], box2[:, 1])
     x2_min = tf.minimum(box1[:, 2], box2[:, 2])
     y2_min = tf.minimum(box1[:, 3], box2[:, 3])
-   
+
     x_diff = tf.maximum(x2_min - x1_max, 0)
     y_diff = tf.maximum(y2_min - y1_max, 0)
-    
+
     return x_diff * y_diff
 
 def area(box):
@@ -223,7 +224,7 @@ def interp(w, i, channel_dim):
         w: A 4D block tensor of shape (n, h, w, c)
         i: A list of 3-tuples [(x_1, y_1, z_1), (x_2, y_2, z_2), ...],
             each having type (int, float, float)
- 
+
         The 4D block represents a batch of 3D image feature volumes with c channels.
         The input i is a list of points  to index into w via interpolation. Direct
         indexing is not possible due to y_1 and z_1 being float values.
@@ -246,15 +247,15 @@ def interp(w, i, channel_dim):
     upper_r_idx = to_idx(upper_r, tf.shape(w))
     lower_l_idx = to_idx(lower_l, tf.shape(w))
     lower_r_idx = to_idx(lower_r, tf.shape(w))
- 
+
     upper_l_value = tf.gather(w_as_vector, upper_l_idx)
     upper_r_value = tf.gather(w_as_vector, upper_r_idx)
     lower_l_value = tf.gather(w_as_vector, lower_l_idx)
     lower_r_value = tf.gather(w_as_vector, lower_r_idx)
- 
+
     alpha_lr = tf.expand_dims(i[:, 2] - tf.floor(i[:, 2]), 1)
     alpha_ud = tf.expand_dims(i[:, 1] - tf.floor(i[:, 1]), 1)
- 
+
     upper_value = (1 - alpha_lr) * upper_l_value + (alpha_lr) * upper_r_value
     lower_value = (1 - alpha_lr) * lower_l_value + (alpha_lr) * lower_r_value
     value = (1 - alpha_ud) * upper_value + (alpha_ud) * lower_value
