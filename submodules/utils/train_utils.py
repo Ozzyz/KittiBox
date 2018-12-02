@@ -41,8 +41,7 @@ def _draw_rect(draw, rect, color):
     rect_cords = ((left, top), (left, bottom),
                   (right, bottom), (right, top),
                   (left, top))
-    COLORS = [(255, 0, 0), (0,255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
-    draw_color = COLORS[rect.class_id]
+    draw_color = CLASS_COLORS[rect.class_id]
     draw.line(rect_cords, fill=draw_color, width=2)
 
 
@@ -132,7 +131,7 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
     acc_rects = []
     if use_stitching:
         from stitch_wrapper import stitch_rects
-        logging.info("Stitching rects (add rectangles train_utils.py)")
+        #logging.info("Stitching rects (add rectangles train_utils.py)")
         class_ids = set([x.class_id for x in all_rects_r])
         # Iterate through bounding boxes of each class, stitching them together
         for class_id in class_ids:
@@ -142,8 +141,8 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
                     rects_in_cell = all_rects[y][x]
                     class_rects[y][x].extend([rect for rect in rects_in_cell if rect.class_id == class_id])
             stitched_rects = stitch_rects(class_rects, tau)
-            logging.info("Adding {} rects of class {} to acc_rects".format(len(stitched_rects), class_id)) 
-            logging.info("Ids of rects after stitching: {}".format([rect.class_id for rect in stitched_rects]))
+            if stitched_rects:
+                logging.info("Adding {} rects of class {} to acc_rects".format(len(stitched_rects), class_id)) 
             acc_rects.extend(stitched_rects)
     else:
         acc_rects = all_rects_r
@@ -165,10 +164,13 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
                 draw_color = CLASS_COLORS[rect.class_id]
                 logging.info("train-utils: Attempting to draw rect with class id {} (color: {})".format(rect.class_id, draw_color))
                 _draw_rect(draw, rect, draw_color)
-
+    import random
+    num = random.randint(0,1000)
+    im.save("asdasdasd" + str(num) + ".png", "PNG")
     image = np.array(im).astype('float32')
 
     rects = []
+    logging.info("Class ids of rects in add_rectangles: {}".format(set([rect.class_id for rect in acc_rects]))) 
     for rect in acc_rects:
         r = al.AnnoRect()
         r.x1 = rect.cx - rect.width/2.
@@ -178,6 +180,7 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
         r.score = rect.true_confidence
         r.classID = rect.class_id
         rects.append(r)
+    logging.info("Class ids of rects in add_rectangles after annorects: {}".format(set([rect.classID for rect in rects])))
     return image, rects
 
 def to_x1y1x2y2(box):

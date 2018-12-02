@@ -17,9 +17,7 @@ from collections import namedtuple
 
 
 CLASSES = ['Car', 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
-CLASS_IDS = {CLASSES[x]: x for x in range(len(CLASSES))}
 
-USED_CLASSES = [False for x in range(len(CLASSES))]
 
 
 def read_bdd_anno(label_file):
@@ -179,13 +177,12 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
 
             fake_anno = namedtuple('fake_anno_object', ['rects'])
             pos_anno = fake_anno(pos_list)
-
+            
             boxes, confs = annotation_to_h5(hypes,
                                             pos_anno,
                                             hypes["grid_width"],
                                             hypes["grid_height"],
                                             hypes["rnn_len"])
-            logging.info("Classes of all boxes: {}".format([boxes.]))
             # BDD100K does not contain any 'DontCare' areas
             mask_list = [rect for rect in anno.rects if rect.classID == -1]
             mask = _generate_mask(hypes, mask_list)

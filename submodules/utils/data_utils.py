@@ -1,7 +1,7 @@
-from PIL import Image, ImageDraw
 from __future__ import division
 from __future__ import print_function
 
+from PIL import Image, ImageDraw
 
 import os
 import re
@@ -33,7 +33,6 @@ def annotation_to_h5(hypes, anno, cell_width, cell_height, max_len):
         [type] -- [description]
     """
 
-    logging.info("Converting annotation to h5")
     region_size = hypes['region_size']
     assert hypes['region_size'] == hypes['image_height'] / hypes['grid_height']
     assert hypes['region_size'] == hypes['image_width'] / hypes['grid_width']
@@ -79,7 +78,9 @@ def annotation_to_h5(hypes, anno, cell_width, cell_height, max_len):
             # TODO: Should this be num_classes ?
             # box_flags[0, cidx, 0, bidx, 0] = max(
             #    box_list[cidx][bidx].silhouetteID, 1)
-            box_flags[0, cidx, 0, bidx, 0] = box.class_id
+            box_class_id = box_list[cidx][bidx].classID
+            #logging.info("Data utils: class id of box cidx, bidx = ({}, {}) is {}".format(cidx, bidx, box_class_id)) 
+            box_flags[0, cidx, 0, bidx, 0] = box_class_id
     return boxes, box_flags
 
 
@@ -229,7 +230,7 @@ def _get_ignore_rect(x, y, cell_size):
 
 
 def draw_rect(draw, rect, color):
-
+    logging.info("data_utils: Draw rect called - drawing rect {}".format(rect))
     COLORS = [(255, 0, 0), (0, 255, 0), (0, 0, 255),
               (255, 255, 0), (0, 255, 255), (255, 0, 255)]
     rect_cords = ((rect.left, rect.top), (rect.left, rect.bottom),
@@ -269,13 +270,12 @@ def draw_encoded(image, confs, mask=None, rects=None, cell_size=32):
                 pdraw.line(((rect.left, rect.top), (rect.right, rect.bottom)),
                            fill=(0, 0, 0, 255), width=2)
 
-    color = (0, 0, 255)
     if rects is not None:
         for rect in rects:
             rect_cords = ((rect.x1, rect.y1), (rect.x1, rect.y2),
                           (rect.x2, rect.y2), (rect.x2, rect.y1),
                           (rect.x1, rect.y1))
-            pdraw.line(rect_cords, fill=color, width=2)
+            pdraw.line(rect_cords, fill=COLORS[rect.class_id], width=2)
 
     im.paste(poly, mask=poly)
 

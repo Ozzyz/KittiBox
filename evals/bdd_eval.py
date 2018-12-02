@@ -48,6 +48,26 @@ def make_img_dir(hypes):
 CLASSES = ['Car', 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
 
 
+def calc_fps(pred_boxes, pred_confidences, feed):
+    start_time = time.time()
+    for i in xrange(100):
+        (np_pred_boxes, np_pred_confidences) = sess.run([pred_boxes,
+                                                         pred_confidences],
+                                                        feed_dict=feed)
+    dt = (time.time() - start_time)/100
+
+    start_time = time.time()
+    for i in xrange(100):
+        utils.train_utils.compute_rectangels(
+            hypes, np_pred_confidences,
+            np_pred_boxes, show_removed=False,
+            use_stitching=True, rnn_len=hypes['rnn_len'],
+            min_conf=0.001, tau=hypes['tau'])
+    dt2 = (time.time() - start_time)/100
+    return dt, dt2
+
+
+
 def write_rects(rects, filename):
     # TODO: Expand this to write bboxes of different classes
     out_str = []
@@ -63,7 +83,7 @@ def write_rects(rects, filename):
                 (class_str, rect.x1, rect.y1, rect.x2, rect.y2, rect.score)
             print(string, file=f)
             out_str.append(string)
-    logging.info("Wrote {} to file".format("\n".join(out_str)))
+    logging.info("Writing ***** \n {} \n ****** to file {}\n".format("\n".join(out_str), filename))
 
 
 def draw_rects(image, rects, color=(255, 192, 203)):
@@ -88,6 +108,36 @@ def draw_rects(image, rects, color=(255, 192, 203)):
 
     return np.array(image)
 
+def create_eval_stats(detection_filepath, phase="train"):
+    """ Takes as input a folder where the detection stats of the different 
+        classes should be, and output the mean detection stats on 
+        easy, medium and hard difficulties.
+        
+        Returns: A list of detection stats where each element is a tuple 
+                 consisting of (phase + mode, mean)
+
+    """
+    # TODO: This should not return evaluation for each class, but a mean of 
+    # the detection results.
+    eval_list = []
+    for class_name in CLASSES:
+        filename = "stats_{}_detection.txt".format(class_name.lower())
+        res_file = os.path.join(detection_filepath, filename)
+        logging.info("Trying to evaluate stats file {}".format(res_file))
+        # Skip classes that have no detections
+        if not os.path.isfile(res_file):
+            continue
+        with open(res_file) as f:
+            for mode in ['easy', 'medium', 'hard']:
+                line = f.readline()
+                if not line:
+                    continue
+                #logging.info("Reading line: {}".format(line))
+                result = np.array(line.rstrip().split(" ")).astype(float)
+                mean = np.mean(result)
+                eval_list.append(("{}: {}   {}".format(class_name, phase, mode), mean))
+    return eval_list
+
 
 def evaluate(hypes, sess, image_pl, softmax):
     logging.info("KittiBox: Evaluating images and bboxes")
@@ -104,7 +154,7 @@ def evaluate(hypes, sess, image_pl, softmax):
     label_dir = os.path.join(hypes['dirs']['data_dir'],
                              hypes['data']['label_dir'])
 
-    #logging.info("Trying to call kitti evaluation code - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
+    logging.info("Trying to call kitti evaluation code - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
     try:
         cmd = [eval_cmd, val_path, label_dir]
         popen = subprocess.Popen(
@@ -122,23 +172,16 @@ def evaluate(hypes, sess, image_pl, softmax):
         eval_list.append(('Speed (fps)', 1/dt))
         eval_list.append(('Post (msec)', 1000*dt2))
         return eval_list, image_list
+    
+    # Get evaluation of detections on validation
+    val_detection_results = create_eval_stats(val_path, phase="val")
+    eval_list.extend(val_detection_results)
 
-    res_file = os.path.join(val_path, "stats_car_detection.txt")
-    #logging.info("Trying to evaluate stats file {}".format(res_file))
-    with open(res_file) as f:
-        for mode in ['easy', 'medium', 'hard']:
-            line = f.readline()
-            if not line:
-                continue
-            #logging.info("Reading line: {}".format(line))
-            result = np.array(line.rstrip().split(" ")).astype(float)
-            mean = np.mean(result)
-            eval_list.append(("val   " + mode, mean))
 
     pred_annolist, image_list2, dt, dt2 = get_results(
         hypes, sess, image_pl, softmax, False)
     val_path = make_val_dir(hypes, False)
-    # label_dir = make_val_dir(hypes, True) # TODO: Check if this actually works as intended
+
     cmd = [eval_cmd, val_path, label_dir]
     logging.info(
         "Trying to call kitti evaluation code (pt2) - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
@@ -147,19 +190,10 @@ def evaluate(hypes, sess, image_pl, softmax):
             cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
     except OSError as error:
         logging.warning("Failed to run second call to kitti evaluation code")
-
-    res_file = os.path.join(val_path, "stats_car_detection.txt")
-
-    with open(res_file) as f:
-        #logging.info("KittiBox eval: Trying to load res file: {}".format(res_file))
-        for mode in ['easy', 'medium', 'hard']:
-            line = f.readline()
-            if not line:
-                continue
-            #logging.info("Reading line: {}".format(line))
-            result = np.array(line.rstrip().split(" ")).astype(float)
-            mean = np.mean(result)
-            eval_list.append(("train   " + mode, mean))
+    
+    # Get evaluation of detections on train
+    train_detection_results = create_eval_stats(val_path, phase="train")
+    eval_list.extend(train_detection_results)    
 
     eval_list.append(('Speed (msec)', 1000*dt))
     eval_list.append(('Speed (fps)', 1/dt))
@@ -182,11 +216,11 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
     if validation:
         kitti_txt = os.path.join(hypes['dirs']['data_dir'],
                                  hypes['data']['val_file'])
-        #logging.info("get_results(): Trying to test VAL-phase with kitti-predictions on path {}".format(kitti_txt))
+        logging.info("get_results(): Trying to test VAL-phase with kitti-predictions on path {}".format(kitti_txt))
     else:
         kitti_txt = os.path.join(hypes['dirs']['data_dir'],
                                  hypes['data']['train_file'])
-        #logging.info("get_results(): Trying to test TRAIN-phase with kitti-predictions on path {}".format(kitti_txt))
+        logging.info("get_results(): Trying to test TRAIN-phase with kitti-predictions on path {}".format(kitti_txt))
     # true_annolist = AnnLib.parse(test_idl)
 
     val_dir = make_val_dir(hypes, validation)
@@ -195,7 +229,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
     image_list = []
 
     pred_annolist = AnnLib.AnnoList()
-    #logging.info("Reading lines in kitti_txt: {}".format(kitti_txt))
+    logging.info("Reading lines in kitti_txt: {}".format(kitti_txt))
     files = [line.rstrip() for line in open(kitti_txt)]
     #base_path = os.path.realpath(os.path.dirname(kitti_txt))
     base_path = "/notebooks"
@@ -245,7 +279,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
         image_name = os.path.basename(image_file)
         val_file_name = image_name.split('.')[0] + '.txt'
         val_file = os.path.join(val_dir, val_file_name)
-        #logging.info("KittiBox: Full name of val file: {}".format(val_file))
+        logging.info("KittiBox: Full name of val file: {}".format(val_file))
         # write rects to file
         logging.info("All rects (bdd_eval): {}".format(rects))
         pred_anno.rects = rects
@@ -268,21 +302,8 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
                                            hypes["image_width"]),
                                 interp='cubic')
         feed = {image_pl: img}
+
     logging.info("Feeding in image to fps test")
-    start_time = time.time()
-    for i in xrange(100):
-        (np_pred_boxes, np_pred_confidences) = sess.run([pred_boxes,
-                                                         pred_confidences],
-                                                        feed_dict=feed)
-    dt = (time.time() - start_time)/100
-
-    start_time = time.time()
-    for i in xrange(100):
-        utils.train_utils.compute_rectangels(
-            hypes, np_pred_confidences,
-            np_pred_boxes, show_removed=False,
-            use_stitching=True, rnn_len=hypes['rnn_len'],
-            min_conf=0.001, tau=hypes['tau'])
-    dt2 = (time.time() - start_time)/100
-
+    dt, dt2 = calc_fps(pred_boxes, pred_confidences, feed)
     return pred_annolist, image_list, dt, dt2
+
