@@ -19,9 +19,8 @@ STATIC EVALUATION PARAMETERS
 
 // holds the number of test images on the server
 // FIXME: Change this to be the number of test images of bdd100k
-int32_t N_MAXIMAGES = 1000;
-int32_t N_TESTIMAGES = 1000;
-const int32_t NUM_CLASSES = 6;
+int32_t N_MAXIMAGES = 50;
+int32_t N_TESTIMAGES = 50;
 // easy, moderate and hard evaluation level
 enum DIFFICULTY
 {
@@ -31,9 +30,9 @@ enum DIFFICULTY
 };
 
 // evaluation parameter
-const int32_t MIN_HEIGHT[6] = {40, 25, 25, 10, 10, 40};                       // minimum height for evaluated groundtruth/detections
-const int32_t MAX_OCCLUSION[NUM_CLASSES] = {1000, 1000, 2000, 1, 1, 1};       // maximum occlusion level of the groundtruth used for evaluation
-const double MAX_TRUNCATION[NUM_CLASSES] = {1000, 1000, 1000, 1000, 1000, 1000}; // maximum truncation level of the groundtruth used for evaluation
+const int32_t MIN_HEIGHT[3] = {40, 25, 25};                       // minimum height for evaluated groundtruth/detections
+const int32_t MAX_OCCLUSION[3] = {1000, 1000, 2000};       // maximum occlusion level of the groundtruth used for evaluation
+const double MAX_TRUNCATION[3] = {1000, 1000, 1000}; // maximum truncation level of the groundtruth used for evaluation
 
 // evaluated object classes
 enum CLASSES
@@ -48,7 +47,7 @@ enum CLASSES
 
 // parameters varying per class
 vector<string> CLASS_NAMES;
-const double MIN_OVERLAP[6] = {0.2, 0.3, 0.3, 0.3, 0.3, 0.3}; // the minimum overlap required for evaluation
+const double MIN_OVERLAP[6] = {0.3, 0.3, 0.3, 0.3, 0.3, 0.3}; // the minimum overlap required for evaluation
 
 // no. of recall steps that should be evaluated (discretized)
 const double N_SAMPLE_PTS = 20;

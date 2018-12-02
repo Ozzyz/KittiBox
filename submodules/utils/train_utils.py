@@ -13,12 +13,15 @@ from utils.annolist import AnnotationLib as al
 from .rect import Rect
 
 import logging
+CLASS_COLORS = [(0, 0, 0), (255, 0, 0), (0,255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
+
+
+
 
 def rescale_boxes(current_shape, anno, target_height, target_width):
     
     x_scale = target_width / float(current_shape[1])
     y_scale = target_height / float(current_shape[0])
-    #logging.info("Rescaling boxes - x_scale: {}, y_scale: {} (current shape of image: {}".format(x_scale, y_scale, current_shape))
     for r in anno.rects:
         #assert r.x1 < r.x2
         r.x1 *= x_scale
@@ -42,6 +45,10 @@ def _draw_rect(draw, rect, color):
 
 
 def compute_rectangels(H, confidences, boxes, use_stitching=False, rnn_len=1, min_conf=0.1, show_removed=True, tau=0.25):
+    """ This method is just a copy of add_rectangles except that it does not have any side effects,
+	like drawing images.
+	It is used to as a part to get an accurate measurement of fps in evals/ in KittiBox
+    """
     #logging.info("Train utils: computing rectangles ")
     num_cells = H["grid_height"] * H["grid_width"]
     boxes_r = np.reshape(boxes, (-1,
@@ -55,7 +62,6 @@ def compute_rectangels(H, confidences, boxes, use_stitching=False, rnn_len=1, mi
                                              rnn_len,
                                              H['num_classes']))
     cell_pix_size = H['region_size']
-    logging.info("Shape of confidences {}".format(confidences_r))
     #logging.info("Shape of Boxes: {}, confidences: {}".format(boxes_r.shape, confidences_r.shape))
     all_rects = [[[] for _ in range(H["grid_width"])] for _ in range(H["grid_height"])]
     for n in range(rnn_len):
@@ -69,20 +75,26 @@ def compute_rectangels(H, confidences, boxes, use_stitching=False, rnn_len=1, mi
                 # TODO: Find out which index gave max, and give the class label accordingly to Rect
                 # Ignore first index since that is background/DontCare
                 conf = np.max(confidences_r[0, y, x, n, 1:])
-                #logging.info("Confidences values: {}".format(confidences_r[0, y,x,n,1:]))
-                class_idx = np.argmax(confidences_r[0, y, x, n, 1:])
-                if class_idx != 0: # Since 0 is car - only log other classes since they are more rare
-                    logging.info("Max rect of Class ID {}".format(class_idx))
+                class_idx = np.argmax(confidences_r[0, y, x, n, 1:]) + 1 # Since classes are numbered from 1 to N 
                 all_rects[y][x].append(Rect(abs_cx,abs_cy,w,h,conf,class_idx))
 
     all_rects_r = [r for row in all_rects for cell in row for r in cell]
+    acc_rects = []
     if use_stitching:
         from stitch_wrapper import stitch_rects
-        acc_rects = stitch_rects(all_rects, tau) 
-        #logging.info("Number of rects before/after stitching: {} -> {}".format(len(all_rects), len(acc_rects)))
+        class_ids = set([x.class_id for x in all_rects_r])
+        # Iterate through bounding boxes of each class, stitching them together
+        for class_id in class_ids:
+            class_rects = [[[] for _ in range(H["grid_width"])] for _ in range(H["grid_height"])]
+            for y in range(H["grid_height"]):
+                for x in range(H["grid_width"]):
+                    rects_in_cell = all_rects[y][x]
+                    class_rects[y][x].extend([rect for rect in rects_in_cell if rect.class_id == class_id])
+            
+            stitched_rects = stitch_rects(class_rects, tau)
+            acc_rects.extend(stitched_rects)
     else:
         acc_rects = all_rects_r
-
 
 
 def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_len=1, min_conf=0.1, show_removed=True, tau=0.25,
@@ -110,23 +122,33 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
                 w = bbox[2]
                 h = bbox[3]
                 conf = np.max(confidences_r[0, y, x, n, 1:])
-                class_idx = np.argmax(confidences_r[0, y, x, n, 1:])
-                #logging.info("Confidence argmax idx (classid): {}".format(class_idx))
+                class_idx = np.argmax(confidences_r[0, y, x, n, 1:]) + 1 # Since classes are numbered from 1 to N
                 new_rect = Rect(abs_cx, abs_cy, w, h, conf, class_idx)
                 all_rects[y][x].append(new_rect)
 
     all_rects_r = [r for row in all_rects for cell in row for r in cell]
+    acc_rects = []
     if use_stitching:
         from stitch_wrapper import stitch_rects
-        acc_rects = stitch_rects(all_rects, tau)
+        logging.info("Stitching rects (add rectangles train_utils.py)")
+        class_ids = set([x.class_id for x in all_rects_r])
+        # Iterate through bounding boxes of each class, stitching them together
+        for class_id in class_ids:
+            class_rects = [[[] for _ in range(H["grid_width"])] for _ in range(H["grid_height"])]
+            for y in range(H["grid_height"]):
+                for x in range(H["grid_width"]):
+                    rects_in_cell = all_rects[y][x]
+                    class_rects[y][x].extend([rect for rect in rects_in_cell if rect.class_id == class_id])
+            stitched_rects = stitch_rects(class_rects, tau)
+            logging.info("Adding {} rects of class {} to acc_rects".format(len(stitched_rects), class_id)) 
+            logging.info("Ids of rects after stitching: {}".format([rect.class_id for rect in stitched_rects]))
+            acc_rects.extend(stitched_rects)
     else:
         acc_rects = all_rects_r
 
     if not show_removed:
         all_rects_r = []
     
-    # TODO:  One color for each classtype 
-    COLORS = [(255, 0, 0), (0,255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
     pairs = [(all_rects_r, color_removed), (acc_rects, color_acc)]
     im = Image.fromarray(image.astype('uint8'))
     draw = ImageDraw.Draw(im)
@@ -139,7 +161,8 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
                 logging.warn("Found rect without class id - drawing as default color {}".format(color_acc))
                 _draw_rect(draw, rect, color_acc)
             else:
-                draw_color = COLORS[rect.class_id]
+                draw_color = CLASS_COLORS[rect.class_id]
+                logging.info("train-utils: Attempting to draw rect with class id {} (color: {})".format(rect.class_id, draw_color))
                 _draw_rect(draw, rect, draw_color)
 
     image = np.array(im).astype('float32')
@@ -154,7 +177,6 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
         r.score = rect.true_confidence
         r.classID = rect.class_id
         rects.append(r)
-
     return image, rects
 
 def to_x1y1x2y2(box):
@@ -277,3 +299,5 @@ def bilinear_select(H, pred_boxes, early_feat, early_feat_channels, w_offset, h_
 
     interp_indices = tf.concat(axis=1, values=[tf.to_float(batch_ids), pred_y_center_clip, pred_x_center_clip])
     return interp_indices
+
+

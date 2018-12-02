@@ -18,6 +18,7 @@ import tensorflow as tf
 
 import utils.train_utils
 import time
+from utils.train_utils import CLASS_COLORS
 
 import random
 
@@ -47,30 +48,38 @@ CLASSES = ['Car', 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
 
 def write_rects(rects, filename):
     # TODO: Expand this to write bboxes of different classes
-    logging.info("Writing rects to file {}".format(filename))
+    out_str = []
     with open(filename, 'w') as f:
         for rect in rects:
             class_idx = rect.classID
-            # By default, assume car if class id not assigned (but this should not happen)
+            # By default, assume traffic light if class id not assigned (but this should not happen)
             if class_idx is None:
                 logging.warn("Found rect without class id in evals.py")
-                class_idx = 0
+                class_idx = 3
             class_str = CLASSES[class_idx - 1]
             string = "%s 0 1 0 %f %f %f %f 0 0 0 0 0 0 0 %f" % \
                 (class_str, rect.x1, rect.y1, rect.x2, rect.y2, rect.score)
             print(string, file=f)
+            out_str.append(string)
+    logging.info("Wrote {} to file".format("\n".join(out_str)))
 
 
-def draw_rects(image, rects, color=(0, 255, 0)):
-    """ Returns the image with all rectangles drawn over it"""
+def draw_rects(image, rects, color=(255, 192, 203)):
+    """ Returns the image with all rectangles drawn over it
+        Default color is pink, else uses class colors from train utils.
+    """
+    
     from PIL import Image, ImageDraw
     poly = Image.new('RGBA', image.size)
     pdraw = ImageDraw.Draw(poly)
-    color = (0, 0, 255)
     for rect in rects:
         rect_cords = ((rect.x1, rect.y1), (rect.x1, rect.y2),
                       (rect.x2, rect.y2), (rect.x2, rect.y1),
                       (rect.x1, rect.y1))
+        if rects.class_id is not None:
+            color = CLASS_COLORS[rects.class_id]
+        else:
+            logging.warn("Could not find class id for rect - drawing as default color {}".format(color))
         pdraw.line(rect_cords, fill=color, width=2)
 
     image.paste(poly, mask=poly)
@@ -268,7 +277,7 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
             hypes, np_pred_confidences,
             np_pred_boxes, show_removed=False,
             use_stitching=True, rnn_len=hypes['rnn_len'],
-            min_conf=0.5, tau=hypes['tau'])
+            min_conf=0.001, tau=hypes['tau'])
     dt2 = (time.time() - start_time)/100
 
     return pred_annolist, image_list, dt, dt2

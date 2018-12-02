@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Trains, evaluates and saves the KittiSeg model."""
+"""Trains, evaluates and saves the KittiBox model."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

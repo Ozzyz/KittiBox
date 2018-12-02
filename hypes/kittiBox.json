@@ -7,8 +7,8 @@
     "evaluator_file" : "../evals/bdd_eval.py"
     },
     "data": {
-        "train_file": "img_bbox_train_small.txt",
-        "val_file": "img_bbox_val_small.txt",
+        "train_file": "bbox_minitrain.txt",
+        "val_file": "bbox_minival.txt",
         "truncate_data": false,
         "eval_cmd": "../submodules/KittiObjective2/./evaluate_object2",
         "label_dir": "bdd100k/kitti_labels"
@@ -57,5 +57,5 @@
     "num_inner_channel": 500,
     "num_classes": 7,
     "wd": 5e-4,
-    "detect_truck": false
+    "detect_truck": true
 }

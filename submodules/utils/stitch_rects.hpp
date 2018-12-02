@@ -42,6 +42,8 @@ class Rect {
   }
 
   bool overlaps(const Rect& other, float tau) const {
+    // Since we may train on multiple classes 
+    if(class_id_ != other.class_id_){return 0;}
     if (fabs(cx_ - other.cx_) > (width_ + other.width_) / 1.5) {
       return false;
     } else if (fabs(cy_ - other.cy_) > (height_ + other.height_) / 2.0) {

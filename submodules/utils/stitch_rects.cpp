@@ -8,6 +8,7 @@
 #include "./hungarian/hungarian.hpp"
 #include "./stitch_rects.hpp"
 
+using std::cout;using std::endl;
 using std::vector;
 
 void filter_rects(const vector<vector<vector<Rect> > >& all_rects,
@@ -16,6 +17,12 @@ void filter_rects(const vector<vector<vector<Rect> > >& all_rects,
                   float max_threshold,
                   float tau,
                   float conf_alpha) {
+  /* Takes in all_rects and filters out all rects that have confidence * conf_alpha less
+     than threshold. Then it checks each pair of rects for overlap, and adds them to
+     relevant rects, if the overlap between them is bigger than tau.
+     Note! This code does not take into account the class id of rects, and therefore 
+     assumes that all rects are of same class when stitching.
+  */ 
   const vector<Rect>& accepted_rects = *stitched_rects;
   for (int i = 0; i < (int)all_rects.size(); ++i) {
     for (int j = 0; j < (int)all_rects[0].size(); ++j) {
