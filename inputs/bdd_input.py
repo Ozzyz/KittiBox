@@ -17,25 +17,24 @@ from collections import namedtuple
 
 
 CLASSES = ['Car', 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
-CLASS_IDS = { CLASSES[x]: x for x in range(len(CLASSES))}
 
-USED_CLASSES = [False for x in range(len(CLASSES))]
+
 
 def read_bdd_anno(label_file):
     """Reads a BDD100K annotation file (in kitti format)
-    
+
     Arguments:
         label_file {str} -- Filepath to the label file
     Returns:
         List of bboxes with associated class id
     """
     #logging.info("KittiBox bdd_input.py: Reading label file {}".format(label_file))
-    
+
     return extract_bboxes(label_file)
 
 
 def extract_bboxes(label_file):
-    """ 
+    """
     Extracts all values of interest from the bdd kitti label file and returns a list where
     each row is a bounding box for an object in the image.
     """
@@ -47,7 +46,8 @@ def extract_bboxes(label_file):
             logging.warn("{} not in classes - skipping".format(label[0]))
             continue
         bbox_rect = extract_bbox_rect(label)
-        bbox_rect.classID = CLASSES.index(label[0]) + 1 # Classes are numbered from 1 to N
+        # Classes are numbered from 1 to N
+        bbox_rect.classID = CLASSES.index(label[0]) + 1
         bboxes.append(bbox_rect)
     return bboxes
 
@@ -56,7 +56,8 @@ def extract_bbox_rect(label_list):
     """ Returns an AnnoRect object from the data in the given label list """
     x1, y1, x2, y2 = [float(x) for x in label_list[4:8]]
     if x1 > x2 or y1 > y2:
-        logging.warn("Bounding boxes may have illegal format -> x1,y1,x2,y2: ({},{},{},{})".format(x1,y1,x2,y2))
+        logging.warn(
+            "Bounding boxes may have illegal format -> x1,y1,x2,y2: ({},{},{},{})".format(x1, y1, x2, y2))
         raise ValueError
     return AnnoLib.AnnoRect(x1=x1, y1=y1, x2=x2, y2=y2)
 
@@ -71,10 +72,10 @@ def _gen_label_list(label_file):
     for label_row in label_lines:
         #logging.info(f"Parsing label line {label_row} in {label_file}")
         labels = label_row.split(' ')
-        assert len(labels) == 15, "Expected number of columns to be 15, not" + str(len(labels))
+        assert len(
+            labels) == 15, "Expected number of columns to be 15, not" + str(len(labels))
         label_list.append(labels)
     return label_list
-
 
 
 def _augment_image(hypes, image):
@@ -94,9 +95,10 @@ def _augment_image(hypes, image):
     image = tf.maximum(image, 0)
     return image
 
+
 def _create_bdd_annotations(image_file, gt_image_file):
     assert os.path.exists(image_file), \
-                "File does not exist: %s" % image_file
+        "File does not exist: %s" % image_file
 
     assert os.path.exists(gt_image_file), \
         "File does not exist: %s" % gt_image_file
@@ -107,6 +109,7 @@ def _create_bdd_annotations(image_file, gt_image_file):
     anno.rects = rect_list
     return anno
 
+
 def _load_and_resize_image(image_file, anno, hypes):
     """ Loads an image from the image file, and resizes the image and bounding boxes if necessary"""
     im = scipy.misc.imread(image_file)
@@ -114,12 +117,13 @@ def _load_and_resize_image(image_file, anno, hypes):
         im = im[:, :, :3]
     if not _is_correct_img_size(im, hypes):
         anno = _rescale_boxes(im.shape, anno,
-                                hypes["image_height"],
-                                hypes["image_width"])
+                              hypes["image_height"],
+                              hypes["image_width"])
         im = scipy.misc.imresize(
             im, (hypes["image_height"], hypes["image_width"]),
             interp='cubic')
     return im
+
 
 def _apply_jitter(im, anno, hypes):
     logging.info("Applying jitter to image (kittibox)")
@@ -136,16 +140,16 @@ def _apply_jitter(im, anno, hypes):
 
 
 def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
-    """Loads the given bdd txt file and outputs 
-    
+    """Loads the given bdd txt file and outputs
+
     Arguments:
         bdd_txt -- A .txt file with all pairs of images and masks
-    
+
     Keyword Arguments:
         jitter {bool} -- Whether or not to apply jittering on the images (default: {False})
         random_shuffle {bool} -- Whether or not to yield images in random order (default: {True})
     """
-    
+
     base_path = os.path.realpath(os.path.dirname(bdd_txt))
     files = [line.rstrip() for line in open(bdd_txt)]
     if hypes['data']['truncate_data']:
@@ -173,13 +177,12 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
 
             fake_anno = namedtuple('fake_anno_object', ['rects'])
             pos_anno = fake_anno(pos_list)
-
+            
             boxes, confs = annotation_to_h5(hypes,
                                             pos_anno,
                                             hypes["grid_width"],
                                             hypes["grid_height"],
                                             hypes["rnn_len"])
-
             # BDD100K does not contain any 'DontCare' areas
             mask_list = [rect for rect in anno.rects if rect.classID == -1]
             mask = _generate_mask(hypes, mask_list)
@@ -199,7 +202,7 @@ def _is_correct_img_size(img, hypes):
     """ Returns True if the image is conforming with requirements of
     image height and width defined in hypes
     """
-    return  img.shape[0] == hypes["image_height"] and img.shape[1] == hypes["image_width"]
+    return img.shape[0] == hypes["image_height"] and img.shape[1] == hypes["image_width"]
 
 
 def _generate_mask(hypes, ignore_rects):
@@ -240,6 +243,7 @@ def start_enqueuing_threads(hypes, q, phase, sess):
                 confs_in: data['confs'],
                 boxes_in: data['boxes'],
                 mask_in: data['mask']}
+
     def thread_loop(sess, enqueue_op, gen):
         for d in gen:
             sess.run(enqueue_op, feed_dict=make_feed(d))
@@ -249,8 +253,8 @@ def start_enqueuing_threads(hypes, q, phase, sess):
     data_file = os.path.join(data_dir, data_file)
 
     gen = _load_bdd_txt(data_file, hypes,
-                          jitter={'train': hypes['solver']['use_jitter'],
-                                  'val': False}[phase])
+                        jitter={'train': hypes['solver']['use_jitter'],
+                                'val': False}[phase])
     data = next(gen)
     sess.run(enqueue_op, feed_dict=make_feed(data))
     t = threading.Thread(target=thread_loop,
@@ -265,10 +269,10 @@ def create_queues(hypes, phase):
     hypes["rnn_len"] = 1
     dtypes = [tf.float32, tf.float32, tf.float32, tf.float32]
     grid_size = hypes['grid_width'] * hypes['grid_height']
-    shapes = ([hypes['image_height'], hypes['image_width'], 3],
-              [hypes['grid_height'], hypes['grid_width']],
-              [hypes['grid_height'], hypes['grid_width'], 4],
-              [hypes['grid_height'], hypes['grid_width']])
+    shapes = ([hypes['image_height'], hypes['image_width'], 3],  # Image shape
+              [hypes['grid_height'], hypes['grid_width']],  # Grids
+              [hypes['grid_height'], hypes['grid_width'], 4],  # Bounding boxes
+              [hypes['grid_height'], hypes['grid_width']])  # Confidences
     capacity = 30
     q = tf.FIFOQueue(capacity=capacity, dtypes=dtypes, shapes=shapes)
     return q
@@ -291,6 +295,7 @@ def inputs(hypes, q, phase):
         return image, (confidences, boxes, mask)
     else:
         assert("Bad phase: {}".format(phase))
+
 
 def _rescale_boxes(current_shape, anno, target_height, target_width):
     #logging.info("Rescaling box {} to ({}, {})".format(current_shape, target_width, target_height))

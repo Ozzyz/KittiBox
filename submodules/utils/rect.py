@@ -1,5 +1,5 @@
 class Rect(object):
-    def __init__(self, cx, cy, width, height, confidence, class_id=None):
+    def __init__(self, cx, cy, width, height, confidence, class_id):
         self.cx = cx
         self.cy = cy
         self.width = width

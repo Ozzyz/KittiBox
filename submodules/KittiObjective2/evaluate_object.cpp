@@ -19,9 +19,8 @@ STATIC EVALUATION PARAMETERS
 
 // holds the number of test images on the server
 // FIXME: Change this to be the number of test images of bdd100k
-int32_t N_MAXIMAGES = 1000;
-int32_t N_TESTIMAGES = 1000;
-const int32_t NUM_CLASSES = 6;
+int32_t N_MAXIMAGES = 50;
+int32_t N_TESTIMAGES = 50;
 // easy, moderate and hard evaluation level
 enum DIFFICULTY
 {
@@ -31,9 +30,9 @@ enum DIFFICULTY
 };
 
 // evaluation parameter
-const int32_t MIN_HEIGHT[6] = {40, 25, 25, 10, 10, 40};                       // minimum height for evaluated groundtruth/detections
-const int32_t MAX_OCCLUSION[NUM_CLASSES] = {1000, 1000, 2000, 1, 1, 1};       // maximum occlusion level of the groundtruth used for evaluation
-const double MAX_TRUNCATION[NUM_CLASSES] = {1000, 1000, 1000, 1000, 1000, 1000}; // maximum truncation level of the groundtruth used for evaluation
+const int32_t MIN_HEIGHT[3] = {40, 25, 25};                       // minimum height for evaluated groundtruth/detections
+const int32_t MAX_OCCLUSION[3] = {1000, 1000, 2000};       // maximum occlusion level of the groundtruth used for evaluation
+const double MAX_TRUNCATION[3] = {1000, 1000, 1000}; // maximum truncation level of the groundtruth used for evaluation
 
 // evaluated object classes
 enum CLASSES
@@ -48,7 +47,7 @@ enum CLASSES
 
 // parameters varying per class
 vector<string> CLASS_NAMES;
-const double MIN_OVERLAP[6] = {0.2, 0.3, 0.3, 0.3, 0.3, 0.3}; // the minimum overlap required for evaluation
+const double MIN_OVERLAP[6] = {0.3, 0.3, 0.3, 0.3, 0.3, 0.3}; // the minimum overlap required for evaluation
 
 // no. of recall steps that should be evaluated (discretized)
 const double N_SAMPLE_PTS = 20;
@@ -96,20 +95,18 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
     if (num_args == 16)
     {
       d.box.type = str;
-      if (!strcasecmp(d.box.type.c_str(), "car"))
-      {
+      //if (!strcasecmp(d.box.type.c_str(), "car"))
+      //{
         // TODO: Remove this once we take multiple clases
-        detections.push_back(d);
-      }
+      detections.push_back(d);
+      //}
       //cout << "loadDetections: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << d.box.x1 << " "<< d.box.y1 << " " << d.box.x2 << " "<< d.box.y2 << endl;
       //cout << "SUCESS:!!! Values read: " << str << ", alpha, dbox (x1, y1, x2, y2), tresh " << d.box.alpha << d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << d.thresh <<  endl;
       // orientation=-10 is invalid, AOS is not evaluated if at least one orientation is invalid
       if (d.box.alpha == -10)
         compute_aos = false;
-
+      cout << "\tType of detection: " << d.box.type << endl;
       // a class is only evaluated if it is detected at least once
-      if (!eval_car && !strcasecmp(d.box.type.c_str(), "car"))
-        eval_car = true;
       if (!eval_person && !strcasecmp(d.box.type.c_str(), "person"))
         eval_person = true;
       if (!eval_bike && !strcasecmp(d.box.type.c_str(), "bike"))
@@ -120,6 +117,8 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
         eval_trafficsign = true;
       if (!eval_truck && !strcasecmp(d.box.type.c_str(), "truck"))
         eval_truck = true;
+      if (!eval_car && !strcasecmp(d.box.type.c_str(), "car"))
+        eval_car = true;
     }
     else
     {
@@ -130,8 +129,6 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
   }
   fclose(fp);
   success = true;
-  //cout << "Successfully closed file and loaded detections " << endl;
-  //cout << "detections length: " << detections.size() << endl;
   return detections;
 }
 
@@ -167,12 +164,12 @@ vector<tGroundtruth> loadGroundtruth(string file_name, bool &success)
     {
       //cout << "Values read: " << str << ",alpha,  dbox (x1, y1, x2, y2) " << g.box.alpha << ", " << g.box.x1 << ", " << g.box.y1 << ", " << g.box.x2 << ", " << g.box.y2 << endl;
       g.box.type = str;
-      //cout << "loadGroundTruths: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << g.box.x1 << " "<< g.box.y1 << " " << g.box.x2 << " "<< g.box.y2 << endl;
+      cout << "loadGroundTruths: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << g.box.x1 << " "<< g.box.y1 << " " << g.box.x2 << " "<< g.box.y2 << endl;
       groundtruth.push_back(g);
     }
     else
     {
-      //cout << "Could not load ground truths in fscanf of file " << file_name << ", are you sure it is formatted correctly? (15 values per line) " << endl;
+      cout << "Could not load ground truths in fscanf of file " << file_name << ", are you sure it is formatted correctly? (15 values per line) " << endl;
     }
   }
   fclose(fp);
@@ -193,6 +190,7 @@ void saveStats(const vector<double> &precision, const vector<double> &aos, FILE 
     return;
   }
   //cout << "Writing precision elements: ";
+  cout << "\t";
   for (int32_t i = 0; i < precision.size(); i++)
   {
     cout << "," << precision[i];
@@ -602,7 +600,7 @@ bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<
   vector<tPrData> pr;
   pr.assign(thresholds.size(), tPrData());
   // FIXME: This should iterate over all images in dir
-  cout << "eval_class(): Iterating over all " << N_TESTIMAGES << " testimages" << endl;
+  cout << "\teval_class(): Iterating over all " << N_TESTIMAGES << " testimages" << endl;
   for (int32_t i = 0; i < N_TESTIMAGES; i++)
   {
 
@@ -663,6 +661,7 @@ void saveAndPlotPlots(string dir_name, string file_name, string obj_type, vector
   char command[1024];
 
   // save plot data to file
+  cout << "\t SaveAndPlotPlots: Writing file" << dir_name + "/" + file_name + ".txt" << endl;
   FILE *fp = fopen((dir_name + "/" + file_name + ".txt").c_str(), "w");
   cout << "Saving plot to file " << dir_name + "/" + file_name + ".txt" << endl;
   for (int32_t i = 0; i < (int)N_SAMPLE_PTS; i++)
@@ -745,6 +744,8 @@ int32_t eval_class_and_plot(bool do_eval_class, CLASSES CLASS_TYPE, string resul
   if (do_eval_class)
   {
     cout << "Evaluating class " << CLASS_NAMES[CLASS_TYPE] << endl;
+    cout << "Result file will be in directory " << result_dir << endl;
+   
     fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[CLASS_TYPE] + "_detection.txt").c_str(), "w");
     if (compute_aos)
       fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[CLASS_TYPE] + "_orientation.txt").c_str(), "w");
@@ -753,12 +754,12 @@ int32_t eval_class_and_plot(bool do_eval_class, CLASSES CLASS_TYPE, string resul
         !eval_class(fp_det, fp_ori, CLASS_TYPE, groundtruth, detections, compute_aos, precision[1], aos[1], MODERATE) ||
         !eval_class(fp_det, fp_ori, CLASS_TYPE, groundtruth, detections, compute_aos, precision[2], aos[2], HARD))
     {
-      cout << CLASS_NAMES[CLASS_TYPE] << " evaluation failed." << endl;
+      cout << "===============" <<  CLASS_NAMES[CLASS_TYPE] << " evaluation failed." << endl;
       return false;
     }
     fclose(fp_det);
     saveAndPlotPlots(plot_dir, CLASS_NAMES[CLASS_TYPE] + "_detection", CLASS_NAMES[CLASS_TYPE], precision, 0);
-    cout << "Finished saving plots with class type " << CLASS_NAMES[CLASS_TYPE] << endl;
+    cout << "\tFinished saving plots with class type " << CLASS_NAMES[CLASS_TYPE] << endl;
     if (compute_aos)
     {
       fclose(fp_ori);
@@ -805,9 +806,6 @@ bool eval(string path, string path_to_gt)
 
   for (auto &file_path : fs::directory_iterator(path))
   {
-    //N_MAXIMAGES++;
-    //N_TESTIMAGES++;
-    //cout << "\t Loading detection no " << i << endl;
     // file name
     string full_file_name = file_path.path().string();
     // Since the file names are given as absolute paths, we need to find the last folder separator and ignore everything before this.
@@ -820,8 +818,8 @@ bool eval(string path, string path_to_gt)
 
     // read ground truth and result poses
     bool gt_success, det_success;
-    //cout << "\t eval(): Trying to load ground truths from " << gt_dir + "/" + file_name << endl;
-    //cout << "\t eval(): Trying to load detections from " << result_dir + "/" + file_name << endl;
+    cout << "\t eval(): Trying to load ground truths from " << gt_dir + "/" + file_name << endl;
+    cout << "\t eval(): Trying to load detections from " << result_dir + "/" + file_name << endl;
     vector<tGroundtruth> gt = loadGroundtruth(gt_dir + "/" + file_name, gt_success);
     vector<tDetection> det = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_person, eval_bike, eval_trafficlight, eval_trafficsign, eval_truck, det_success);
     groundtruth.push_back(gt);
@@ -840,6 +838,7 @@ bool eval(string path, string path_to_gt)
     }
   }
   cout << "Done. " << endl;
+  
   eval_class_and_plot(eval_car, CAR, result_dir, plot_dir, groundtruth, detections, compute_aos);
   eval_class_and_plot(eval_person, PERSON, result_dir, plot_dir, groundtruth, detections, compute_aos);
   eval_class_and_plot(eval_bike, BIKE, result_dir, plot_dir, groundtruth, detections, compute_aos);

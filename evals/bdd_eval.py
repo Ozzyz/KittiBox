@@ -18,6 +18,7 @@ import tensorflow as tf
 
 import utils.train_utils
 import time
+from utils.train_utils import CLASS_COLORS
 
 import random
 
@@ -25,6 +26,7 @@ from utils.annolist import AnnotationLib as AnnLib
 
 import logging
 import sys
+
 
 def make_val_dir(hypes, validation=True):
     if validation:
@@ -45,37 +47,97 @@ def make_img_dir(hypes):
 
 CLASSES = ['Car', 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
 
+
+def calc_fps(pred_boxes, pred_confidences, feed):
+    start_time = time.time()
+    for i in xrange(100):
+        (np_pred_boxes, np_pred_confidences) = sess.run([pred_boxes,
+                                                         pred_confidences],
+                                                        feed_dict=feed)
+    dt = (time.time() - start_time)/100
+
+    start_time = time.time()
+    for i in xrange(100):
+        utils.train_utils.compute_rectangels(
+            hypes, np_pred_confidences,
+            np_pred_boxes, show_removed=False,
+            use_stitching=True, rnn_len=hypes['rnn_len'],
+            min_conf=0.001, tau=hypes['tau'])
+    dt2 = (time.time() - start_time)/100
+    return dt, dt2
+
+
+
 def write_rects(rects, filename):
     # TODO: Expand this to write bboxes of different classes
-    logging.info("Writing rects to file {}".format(filename))
+    out_str = []
     with open(filename, 'w') as f:
         for rect in rects:
             class_idx = rect.classID
-            # By default, assume car if class id not assigned (but this should not happen)
+            # By default, assume traffic light if class id not assigned (but this should not happen)
             if class_idx is None:
                 logging.warn("Found rect without class id in evals.py")
-                class_idx = 0
+                class_idx = 3
             class_str = CLASSES[class_idx - 1]
             string = "%s 0 1 0 %f %f %f %f 0 0 0 0 0 0 0 %f" % \
                 (class_str, rect.x1, rect.y1, rect.x2, rect.y2, rect.score)
             print(string, file=f)
+            out_str.append(string)
+    logging.info("Writing ***** \n {} \n ****** to file {}\n".format("\n".join(out_str), filename))
 
 
-def draw_rects(image, rects, color=(0, 255, 0)):
-    """ Returns the image with all rectangles drawn over it"""
+def draw_rects(image, rects, color=(255, 192, 203)):
+    """ Returns the image with all rectangles drawn over it
+        Default color is pink, else uses class colors from train utils.
+    """
+    
     from PIL import Image, ImageDraw
     poly = Image.new('RGBA', image.size)
     pdraw = ImageDraw.Draw(poly)
-    color = (0, 0, 255)
     for rect in rects:
         rect_cords = ((rect.x1, rect.y1), (rect.x1, rect.y2),
                       (rect.x2, rect.y2), (rect.x2, rect.y1),
                       (rect.x1, rect.y1))
+        if rects.class_id is not None:
+            color = CLASS_COLORS[rects.class_id]
+        else:
+            logging.warn("Could not find class id for rect - drawing as default color {}".format(color))
         pdraw.line(rect_cords, fill=color, width=2)
 
     image.paste(poly, mask=poly)
 
     return np.array(image)
+
+def create_eval_stats(detection_filepath, phase="train"):
+    """ Takes as input a folder where the detection stats of the different 
+        classes should be, and output the mean detection stats on 
+        easy, medium and hard difficulties.
+        
+        Returns: A list of detection stats where each element is a tuple 
+                 consisting of (phase + mode, mean)
+
+    """
+    # TODO: This should not return evaluation for each class, but a mean of 
+    # the detection results.
+    eval_list = []
+    for class_name in CLASSES:
+        filename = "stats_{}_detection.txt".format(class_name.lower())
+        res_file = os.path.join(detection_filepath, filename)
+        logging.info("Trying to evaluate stats file {}".format(res_file))
+        # Skip classes that have no detections
+        if not os.path.isfile(res_file):
+            continue
+        with open(res_file) as f:
+            for mode in ['easy', 'medium', 'hard']:
+                line = f.readline()
+                if not line:
+                    continue
+                #logging.info("Reading line: {}".format(line))
+                result = np.array(line.rstrip().split(" ")).astype(float)
+                mean = np.mean(result)
+                eval_list.append(("{}: {}   {}".format(class_name, phase, mode), mean))
+    return eval_list
+
 
 def evaluate(hypes, sess, image_pl, softmax):
     logging.info("KittiBox: Evaluating images and bboxes")
@@ -92,11 +154,12 @@ def evaluate(hypes, sess, image_pl, softmax):
     label_dir = os.path.join(hypes['dirs']['data_dir'],
                              hypes['data']['label_dir'])
 
-    #logging.info("Trying to call kitti evaluation code - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
+    logging.info("Trying to call kitti evaluation code - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
     try:
         cmd = [eval_cmd, val_path, label_dir]
-        popen = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
-        
+        popen = subprocess.Popen(
+            cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
+
     except OSError as error:
         logging.warning("Failed to run run kitti evaluation code.")
         logging.warning("Please run: `cd submodules/KittiObjective2/ && make`")
@@ -109,42 +172,28 @@ def evaluate(hypes, sess, image_pl, softmax):
         eval_list.append(('Speed (fps)', 1/dt))
         eval_list.append(('Post (msec)', 1000*dt2))
         return eval_list, image_list
+    
+    # Get evaluation of detections on validation
+    val_detection_results = create_eval_stats(val_path, phase="val")
+    eval_list.extend(val_detection_results)
 
-    res_file = os.path.join(val_path, "stats_car_detection.txt")
-    #logging.info("Trying to evaluate stats file {}".format(res_file))
-    with open(res_file) as f:
-        for mode in ['easy', 'medium', 'hard']:
-            line = f.readline()
-            if not line:
-                continue
-            #logging.info("Reading line: {}".format(line))
-            result = np.array(line.rstrip().split(" ")).astype(float)
-            mean = np.mean(result)
-            eval_list.append(("val   " + mode, mean))
 
     pred_annolist, image_list2, dt, dt2 = get_results(
         hypes, sess, image_pl, softmax, False)
     val_path = make_val_dir(hypes, False)
-    #label_dir = make_val_dir(hypes, True) # TODO: Check if this actually works as intended
+
     cmd = [eval_cmd, val_path, label_dir]
-    logging.info("Trying to call kitti evaluation code (pt2) - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
+    logging.info(
+        "Trying to call kitti evaluation code (pt2) - eval_cmd: {}, val_path: {}, label_dir: {}".format(eval_cmd, val_path, label_dir))
     try:
-        popen = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
+        popen = subprocess.Popen(
+            cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
     except OSError as error:
         logging.warning("Failed to run second call to kitti evaluation code")
     
-    res_file = os.path.join(val_path, "stats_car_detection.txt")
-    
-    with open(res_file) as f:
-        #logging.info("KittiBox eval: Trying to load res file: {}".format(res_file)) 
-        for mode in ['easy', 'medium', 'hard']:
-            line = f.readline()
-            if not line:
-                continue
-            #logging.info("Reading line: {}".format(line))
-            result = np.array(line.rstrip().split(" ")).astype(float)
-            mean = np.mean(result)
-            eval_list.append(("train   " + mode, mean))
+    # Get evaluation of detections on train
+    train_detection_results = create_eval_stats(val_path, phase="train")
+    eval_list.extend(train_detection_results)    
 
     eval_list.append(('Speed (msec)', 1000*dt))
     eval_list.append(('Speed (fps)', 1/dt))
@@ -167,11 +216,11 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
     if validation:
         kitti_txt = os.path.join(hypes['dirs']['data_dir'],
                                  hypes['data']['val_file'])
-        #logging.info("get_results(): Trying to test VAL-phase with kitti-predictions on path {}".format(kitti_txt))
+        logging.info("get_results(): Trying to test VAL-phase with kitti-predictions on path {}".format(kitti_txt))
     else:
         kitti_txt = os.path.join(hypes['dirs']['data_dir'],
                                  hypes['data']['train_file'])
-        #logging.info("get_results(): Trying to test TRAIN-phase with kitti-predictions on path {}".format(kitti_txt))
+        logging.info("get_results(): Trying to test TRAIN-phase with kitti-predictions on path {}".format(kitti_txt))
     # true_annolist = AnnLib.parse(test_idl)
 
     val_dir = make_val_dir(hypes, validation)
@@ -180,19 +229,19 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
     image_list = []
 
     pred_annolist = AnnLib.AnnoList()
-    #logging.info("Reading lines in kitti_txt: {}".format(kitti_txt))
+    logging.info("Reading lines in kitti_txt: {}".format(kitti_txt))
     files = [line.rstrip() for line in open(kitti_txt)]
     base_path = os.path.realpath(os.path.dirname(kitti_txt))
     #base_path = "/notebooks"
     # In order to evaluate fps after each run, define variables in front,
     # and then assign them within the loop
     feed = None
-    #logging.info("bdd_eval: Trying to read files {}".format(files)) 
+    #logging.info("bdd_eval: Trying to read files {}".format(files))
     for i, file in enumerate(files):
         image_file = file.split(" ")[0]
         if not validation and random.random() > 0.2:
             continue
-        
+
         image_file = os.path.join(base_path, image_file)
         orig_img = scp.misc.imread(image_file)[:, :, :3]
         img = scp.misc.imresize(orig_img, (hypes["image_height"],
@@ -213,14 +262,13 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
             np_pred_boxes, show_removed=False,
             use_stitching=True, rnn_len=hypes['rnn_len'],
             min_conf=0.50, tau=hypes['tau'], color_acc=(0, 255, 0))
-        
 
         if validation and i % 2 == 0:
             image_name = os.path.basename(pred_anno.imageName)
             image_name = os.path.join(img_dir, image_name)
-            #logging.info("*"*20)
+            # logging.info("*"*20)
             #logging.info("Save image {} to file ".format(image_name))
-            #logging.info("*"*20)
+            # logging.info("*"*20)
             scp.misc.imsave(image_name, new_img)
 
         if validation:
@@ -231,9 +279,9 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
         image_name = os.path.basename(image_file)
         val_file_name = image_name.split('.')[0] + '.txt'
         val_file = os.path.join(val_dir, val_file_name)
-        #logging.info("KittiBox: Full name of val file: {}".format(val_file))
+        logging.info("KittiBox: Full name of val file: {}".format(val_file))
         # write rects to file
-
+        logging.info("All rects (bdd_eval): {}".format(rects))
         pred_anno.rects = rects
         pred_anno = utils.train_utils.rescale_boxes((
             hypes["image_height"],
@@ -247,28 +295,15 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
 
     logging.info("Starting to evaluate fps of network")
     if feed is None:
-        logging.warn("Feed is none - available files are {}".format(files)) 
+        logging.warn("Feed is none - available files are {}".format(files))
         image_file = os.path.join(base_path, image_file)
         orig_img = scp.misc.imread(image_file)[:, :, :3]
         img = scp.misc.imresize(orig_img, (hypes["image_height"],
                                            hypes["image_width"]),
                                 interp='cubic')
-        feed = {image_pl : img}
+        feed = {image_pl: img}
+
     logging.info("Feeding in image to fps test")
-    start_time = time.time()
-    for i in xrange(100):
-        (np_pred_boxes, np_pred_confidences) = sess.run([pred_boxes,
-                                                         pred_confidences],
-                                                        feed_dict=feed)
-    dt = (time.time() - start_time)/100
-
-    start_time = time.time()
-    for i in xrange(100):
-        utils.train_utils.compute_rectangels(
-            hypes, np_pred_confidences,
-            np_pred_boxes, show_removed=False,
-            use_stitching=True, rnn_len=hypes['rnn_len'],
-            min_conf=0.5, tau=hypes['tau'])
-    dt2 = (time.time() - start_time)/100
-
+    dt, dt2 = calc_fps(pred_boxes, pred_confidences, feed)
     return pred_annolist, image_list, dt, dt2
+
