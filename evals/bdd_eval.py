@@ -48,7 +48,7 @@ def make_img_dir(hypes):
 CLASSES = ['Car', 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
 
 
-def calc_fps(pred_boxes, pred_confidences, feed):
+def calc_fps(sess, hypes, pred_boxes, pred_confidences, feed):
     start_time = time.time()
     for i in xrange(100):
         (np_pred_boxes, np_pred_confidences) = sess.run([pred_boxes,
@@ -304,6 +304,6 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
         feed = {image_pl: img}
 
     logging.info("Feeding in image to fps test")
-    dt, dt2 = calc_fps(pred_boxes, pred_confidences, feed)
+    dt, dt2 = calc_fps(sess, hypes, pred_boxes, pred_confidences, feed)
     return pred_annolist, image_list, dt, dt2
 

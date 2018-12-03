@@ -30,7 +30,7 @@ enum DIFFICULTY
 };
 
 // evaluation parameter
-const int32_t MIN_HEIGHT[3] = {40, 25, 25};                       // minimum height for evaluated groundtruth/detections
+const int32_t MIN_HEIGHT[3] = {40, 40, 40};                       // minimum height for evaluated groundtruth/detections
 const int32_t MAX_OCCLUSION[3] = {1000, 1000, 2000};       // maximum occlusion level of the groundtruth used for evaluation
 const double MAX_TRUNCATION[3] = {1000, 1000, 1000}; // maximum truncation level of the groundtruth used for evaluation
 
@@ -47,10 +47,10 @@ enum CLASSES
 
 // parameters varying per class
 vector<string> CLASS_NAMES;
-const double MIN_OVERLAP[6] = {0.3, 0.3, 0.3, 0.3, 0.3, 0.3}; // the minimum overlap required for evaluation
+const double MIN_OVERLAP[6] = {0.2, 0.2, 0.2, 0.2, 0.2, 0.2}; // the minimum overlap required for evaluation
 
 // no. of recall steps that should be evaluated (discretized)
-const double N_SAMPLE_PTS = 20;
+const double N_SAMPLE_PTS = 41;
 
 // initialize class names
 void initGlobals()
@@ -320,7 +320,6 @@ void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vect
     {
       valid_class = 1;
     }
-
     // classes not used for evaluation
     else
       valid_class = -1;
@@ -588,7 +587,6 @@ bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<
     dontcare.push_back(dc);
     // compute statistics to get recall values
     tPrData pr_tmp = tPrData();
-    // FIXME: computeStatistics returns pr_tmp with v-variable of length 0
     pr_tmp = computeStatistics(current_class, groundtruth[i], detections[i], dc, i_gt, i_det, true);
     // add detection scores to vector over all images
     for (int32_t j = 0; j < pr_tmp.v.size(); j++)
@@ -812,7 +810,7 @@ bool eval(string path, string path_to_gt)
     string file_name(full_file_name.substr(full_file_name.rfind("/") + 1));
     if (!exists_test0(result_dir + "/" + file_name) || !has_suffix(file_name, ".txt") || has_suffix(file_name, "orientation.txt") || has_suffix(file_name, "detection.txt"))
     {
-      cout << "\t" << result_dir + "/" + file_name << " does not exist - skipping" << endl;
+      cout << "\t" << result_dir + "/" + file_name << " does not exist or does not contain detections - skipping" << endl;
       continue;
     }
 
@@ -837,8 +835,12 @@ bool eval(string path, string path_to_gt)
       return false;
     }
   }
-  cout << "Done. " << endl;
-  
+  cout << "Eval car: " << eval_car << endl; 
+  cout << "Eval person: " << eval_person << endl; 
+  cout << "Eval bike: " << eval_bike << endl; 
+  cout << "Eval traffic sign: " << eval_trafficsign << endl; 
+  cout << "Eval traffic light: " << eval_trafficlight << endl; 
+  cout << "Eval truck: " << eval_truck << endl; 
   eval_class_and_plot(eval_car, CAR, result_dir, plot_dir, groundtruth, detections, compute_aos);
   eval_class_and_plot(eval_person, PERSON, result_dir, plot_dir, groundtruth, detections, compute_aos);
   eval_class_and_plot(eval_bike, BIKE, result_dir, plot_dir, groundtruth, detections, compute_aos);

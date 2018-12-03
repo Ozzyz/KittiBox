@@ -11,6 +11,7 @@ import os
 import numpy as np
 import scipy as scp
 import random
+import logging
 
 from utils import train_utils
 from utils import data_utils
@@ -325,13 +326,16 @@ def loss(hypes, decoded_logits, labels):
     Returns:
       loss: Loss tensor of type float.
     """
-
+    logging.info("Calculating loss in fastbox.py")
+   
     confidences, boxes, mask = labels
 
     pred_boxes = decoded_logits['pred_boxes']
     pred_logits = decoded_logits['pred_logits']
     pred_confidences = decoded_logits['pred_confidences']
-
+    logging.info("boxes/ pred boxes shape:{}  {}".format(boxes.shape, pred_boxes.shape))
+    logging.info("pred_logits shape: {}".format(pred_logits.shape))
+    logging.info("confidences/ pred_confidences shape {},  {}".format(confidences.shape, pred_confidences.shape))
     pred_confs_deltas = decoded_logits['pred_confs_deltas']
     pred_boxes_deltas = decoded_logits['pred_boxes_deltas']
 
@@ -344,13 +348,14 @@ def loss(hypes, decoded_logits, labels):
     confidences = tf.reshape(confidences, (outer_size, 1))
     true_classes = tf.reshape(tf.cast(tf.greater(confidences, 0), 'int64'),
                               [outer_size])
-
     pred_classes = tf.reshape(pred_logits, [outer_size, hypes['num_classes']])
     mask_r = tf.reshape(mask, [outer_size])
-
+    logging.info("Calculating sparse softmax xentropy w logits between pred and true classes shapes {} and {}".format(pred_classes.shape, true_classes.shape))
+    logging.info("True labels: {}".format(true_classes.eval()))
+    logging.info("pred_classes: {}".formaT(pred_classes.eval()))
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits=pred_classes, labels=true_classes)
-
+    logging.info("Found xentropy loss to be {}".format(cross_entropy))
     # ignore don't care areas
     cross_entropy_sum = (tf.reduce_sum(mask_r*cross_entropy))
     confidences_loss = cross_entropy_sum / outer_size * head[0]
@@ -457,7 +462,7 @@ def evaluation(hyp, images, labels, decoded_logits, losses, global_step):
             plot_image = data_utils.draw_encoded(
                 np_img[0], np_confidences[0], mask=np_mask[0], cell_size=32)
 
-        num_images = 10
+        num_images = 100
 
         filename = '%s_%s.jpg' % \
             ((np_global_step // hyp['logging']['write_iter'])
