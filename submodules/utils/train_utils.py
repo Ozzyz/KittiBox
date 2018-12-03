@@ -124,6 +124,7 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
                 h = bbox[3]
                 conf = np.max(confidences_r[0, y, x, n, 1:])
                 class_idx = np.argmax(confidences_r[0, y, x, n, 1:]) + 1 # Since classes are numbered from 1 to N
+                #logging.info("Confidences: {}".format(confidences_r[0, y,x,n,1:]))
                 new_rect = Rect(abs_cx, abs_cy, w, h, conf, class_idx)
                 all_rects[y][x].append(new_rect)
 
@@ -162,15 +163,11 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
                 _draw_rect(draw, rect, color_acc)
             else:
                 draw_color = CLASS_COLORS[rect.class_id]
-                logging.info("train-utils: Attempting to draw rect with class id {} (color: {})".format(rect.class_id, draw_color))
+                #logging.info("train-utils: Attempting to draw rect with class id {} (color: {})".format(rect.class_id, draw_color))
                 _draw_rect(draw, rect, draw_color)
-    import random
-    num = random.randint(0,1000)
-    im.save("asdasdasd" + str(num) + ".png", "PNG")
     image = np.array(im).astype('float32')
 
     rects = []
-    logging.info("Class ids of rects in add_rectangles: {}".format(set([rect.class_id for rect in acc_rects]))) 
     for rect in acc_rects:
         r = al.AnnoRect()
         r.x1 = rect.cx - rect.width/2.

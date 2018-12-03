@@ -283,15 +283,21 @@ def inputs(hypes, q, phase):
     if phase == 'val':
         logging.info("Entering val phase in bdd_inputs.py (KittiBox)")
         image, confidences, boxes, mask = q.dequeue()
+        logging.info("Confidences (true labels): {}".format(confidences))
         image = tf.expand_dims(image, 0)
         confidences = tf.expand_dims(confidences, 0)
         boxes = tf.expand_dims(boxes, 0)
         mask = tf.expand_dims(mask, 0)
+        
+        logging.info("bddinput (val): Shape of confidences, boxes, masks: {} {} {}".format(confidences.shape, boxes.shape, mask.shape))
+        input()
         return image, (confidences, boxes, mask)
     elif phase == 'train':
         logging.info("Entering train phase in bdd_inputs.py (KittiBox)")
         image, confidences, boxes, mask = q.dequeue_many(hypes['batch_size'])
+        logging.info("Confidences (true labels): {}".format(confidences))
         image = _augment_image(hypes, image)
+        logging.info("bddinput: (train) Shape of confidences, boxes, masks: {} {} {}".format(confidences.shape, boxes.shape, mask.shape))
         return image, (confidences, boxes, mask)
     else:
         assert("Bad phase: {}".format(phase))
@@ -309,3 +315,6 @@ def _rescale_boxes(current_shape, anno, target_height, target_width):
         r.y1 *= y_scale
         r.y2 *= y_scale
     return anno
+
+
+
