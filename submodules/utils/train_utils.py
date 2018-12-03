@@ -8,14 +8,9 @@ import tensorflow as tf
 
 from PIL import Image, ImageDraw
 
-from .data_utils import (annotation_jitter, annotation_to_h5)
+from utils.data_utils import (annotation_jitter, annotation_to_h5)
 from utils.annolist import AnnotationLib as al
-from .rect import Rect
-
-import logging
-CLASS_COLORS = [(0, 0, 0), (255, 0, 0), (0,255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
-
-
+from utils.rect import Rect
 
 
 def rescale_boxes(current_shape, anno, target_height, target_width):
