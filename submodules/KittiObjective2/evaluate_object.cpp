@@ -30,9 +30,9 @@ enum DIFFICULTY
 };
 
 // evaluation parameter
-const int32_t MIN_HEIGHT[3] = {40, 40, 40};                       // minimum height for evaluated groundtruth/detections
-const int32_t MAX_OCCLUSION[3] = {1000, 1000, 2000};       // maximum occlusion level of the groundtruth used for evaluation
-const double MAX_TRUNCATION[3] = {1000, 1000, 1000}; // maximum truncation level of the groundtruth used for evaluation
+const int32_t MIN_HEIGHT[3] = {40, 25, 25}; //40, 40};                       // minimum height for evaluated groundtruth/detections
+const int32_t MAX_OCCLUSION[3] = {0, 1, 2}; //{1000, 1000, 2000};       // maximum occlusion level of the groundtruth used for evaluation
+const double MAX_TRUNCATION[3] = {0.15, 0.3, 0.5}; //{1000, 1000, 1000}; // maximum truncation level of the groundtruth used for evaluation
 
 // evaluated object classes
 enum CLASSES
@@ -40,14 +40,14 @@ enum CLASSES
   CAR = 0,
   PERSON = 1,
   BIKE = 2,
-  TRAFFIC_LIGHT = 3,
-  TRAFFIC_SIGN = 4,
-  TRUCK = 5
+  //TRAFFIC_LIGHT = 3,
+  //TRAFFIC_SIGN = 4,
+  //TRUCK = 5
 };
 
 // parameters varying per class
 vector<string> CLASS_NAMES;
-const double MIN_OVERLAP[6] = {0.2, 0.2, 0.2, 0.2, 0.2, 0.2}; // the minimum overlap required for evaluation
+const double MIN_OVERLAP[3] = {0.7, 0.5, 0.5}; //{0.2, 0.2, 0.2, 0.2, 0.2, 0.2}; // the minimum overlap required for evaluation
 
 // no. of recall steps that should be evaluated (discretized)
 const double N_SAMPLE_PTS = 41;
@@ -58,9 +58,9 @@ void initGlobals()
   CLASS_NAMES.push_back("car");
   CLASS_NAMES.push_back("person");
   CLASS_NAMES.push_back("bike");
-  CLASS_NAMES.push_back("traffic_light");
-  CLASS_NAMES.push_back("traffic_sign");
-  CLASS_NAMES.push_back("truck");
+  //CLASS_NAMES.push_back("traffic_light");
+  //CLASS_NAMES.push_back("traffic_sign");
+  //CLASS_NAMES.push_back("truck");
 }
 
 /*=======================================================================
@@ -842,11 +842,11 @@ bool eval(string path, string path_to_gt)
   cout << "Eval traffic light: " << eval_trafficlight << endl; 
   cout << "Eval truck: " << eval_truck << endl; 
   eval_class_and_plot(eval_car, CAR, result_dir, plot_dir, groundtruth, detections, compute_aos);
-  eval_class_and_plot(eval_person, PERSON, result_dir, plot_dir, groundtruth, detections, compute_aos);
-  eval_class_and_plot(eval_bike, BIKE, result_dir, plot_dir, groundtruth, detections, compute_aos);
-  eval_class_and_plot(eval_trafficsign, TRAFFIC_SIGN, result_dir, plot_dir, groundtruth, detections, compute_aos);
-  eval_class_and_plot(eval_trafficlight, TRAFFIC_LIGHT, result_dir, plot_dir, groundtruth, detections, compute_aos);
-  eval_class_and_plot(eval_truck, TRUCK, result_dir, plot_dir, groundtruth, detections, compute_aos);
+  //eval_class_and_plot(eval_person, PERSON, result_dir, plot_dir, groundtruth, detections, compute_aos);
+  //eval_class_and_plot(eval_bike, BIKE, result_dir, plot_dir, groundtruth, detections, compute_aos);
+  //eval_class_and_plot(eval_trafficsign, TRAFFIC_SIGN, result_dir, plot_dir, groundtruth, detections, compute_aos);
+  //eval_class_and_plot(eval_trafficlight, TRAFFIC_LIGHT, result_dir, plot_dir, groundtruth, detections, compute_aos);
+  //eval_class_and_plot(eval_truck, TRUCK, result_dir, plot_dir, groundtruth, detections, compute_aos);
   // success
   return true;
 }

@@ -16,7 +16,7 @@ import threading
 from collections import namedtuple
 
 
-CLASSES = ['Car', 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
+CLASSES = ['Car']#, 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
 
 
 

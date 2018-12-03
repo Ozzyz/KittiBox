@@ -45,7 +45,7 @@ def make_img_dir(hypes):
     return val_dir
 
 
-CLASSES = ['Car', 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
+CLASSES = ['Car']#, 'Person', 'Bike', 'Traffic_light', 'Traffic_sign', 'Truck']
 
 
 def calc_fps(sess, hypes, pred_boxes, pred_confidences, feed):
