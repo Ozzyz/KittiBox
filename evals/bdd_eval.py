@@ -83,7 +83,8 @@ def write_rects(rects, filename):
                 (class_str, rect.x1, rect.y1, rect.x2, rect.y2, rect.score)
             print(string, file=f)
             out_str.append(string)
-    logging.info("Writing ***** \n {} \n ****** to file {}\n".format("\n".join(out_str), filename))
+    if out_str:
+        logging.info("Writing ***** \n {} \n ****** to file {}\n".format("\n".join(out_str), filename))
 
 
 def draw_rects(image, rects, color=(255, 192, 203)):
@@ -279,9 +280,10 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
         image_name = os.path.basename(image_file)
         val_file_name = image_name.split('.')[0] + '.txt'
         val_file = os.path.join(val_dir, val_file_name)
-        logging.info("KittiBox: Full name of val file: {}".format(val_file))
+        logging.info("KittiBox: Name of val file: {}".format(val_file))
         # write rects to file
-        logging.info("All rects (bdd_eval): {}".format(rects))
+        if rects:
+            logging.info("All rects (bdd_eval): {}".format(rects))
         pred_anno.rects = rects
         pred_anno = utils.train_utils.rescale_boxes((
             hypes["image_height"],

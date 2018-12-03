@@ -239,6 +239,10 @@ def start_enqueuing_threads(hypes, q, phase, sess):
     enqueue_op = q.enqueue((x_in, confs_in, boxes_in, mask_in))
 
     def make_feed(data):
+        # Uncommenting these lines may be helpful if you are unsure whether or not labels are being 
+        # loaded correctly for each grid cell, since it returns labels for each cell (class id 1-N)
+        #logging.info("bddinput ({}) - creating feed with confs {}".format(phase, data['confs']))
+        #logging.info("bddinput ({}) - shapes of confs: {}".format(phase, data['confs'].shape))
         return {x_in: data['image'],
                 confs_in: data['confs'],
                 boxes_in: data['boxes'],
@@ -290,7 +294,7 @@ def inputs(hypes, q, phase):
         mask = tf.expand_dims(mask, 0)
         
         logging.info("bddinput (val): Shape of confidences, boxes, masks: {} {} {}".format(confidences.shape, boxes.shape, mask.shape))
-        input()
+        logging.info("bddinput (val): value of confidences (true labels): {}".format(confidences))
         return image, (confidences, boxes, mask)
     elif phase == 'train':
         logging.info("Entering train phase in bdd_inputs.py (KittiBox)")
@@ -298,6 +302,7 @@ def inputs(hypes, q, phase):
         logging.info("Confidences (true labels): {}".format(confidences))
         image = _augment_image(hypes, image)
         logging.info("bddinput: (train) Shape of confidences, boxes, masks: {} {} {}".format(confidences.shape, boxes.shape, mask.shape))
+        logging.info("bddinput (train): value of confidences (true labels): {}".format(confidences))
         return image, (confidences, boxes, mask)
     else:
         assert("Bad phase: {}".format(phase))

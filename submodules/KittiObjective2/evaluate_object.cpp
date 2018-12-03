@@ -95,17 +95,12 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
     if (num_args == 16)
     {
       d.box.type = str;
-      //if (!strcasecmp(d.box.type.c_str(), "car"))
-      //{
-        // TODO: Remove this once we take multiple clases
       detections.push_back(d);
-      //}
-      //cout << "loadDetections: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << d.box.x1 << " "<< d.box.y1 << " " << d.box.x2 << " "<< d.box.y2 << endl;
-      //cout << "SUCESS:!!! Values read: " << str << ", alpha, dbox (x1, y1, x2, y2), tresh " << d.box.alpha << d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << d.thresh <<  endl;
+      cout << "\tloadDetections: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << d.box.x1 << " "<< d.box.y1 << " " << d.box.x2 << " "<< d.box.y2 << endl;
+
       // orientation=-10 is invalid, AOS is not evaluated if at least one orientation is invalid
       if (d.box.alpha == -10)
         compute_aos = false;
-      cout << "\tType of detection: " << d.box.type << endl;
       // a class is only evaluated if it is detected at least once
       if (!eval_person && !strcasecmp(d.box.type.c_str(), "person"))
         eval_person = true;
@@ -122,7 +117,7 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
     }
     else
     {
-      //cout << "\t\t\t loadDetections: Could not load detections from fscanf of file " << file_name << ", are you sure it is formatted correctly? (16 values per line)" << endl;
+      cout << "\t\t\t loadDetections: Could not load detections from fscanf of file " << file_name << ", are you sure it is formatted correctly? (16 values per line)" << endl;
       //cout << "Note that classes other than car, pedestrian and cyclists are ignored" << endl;
       //cout << "FAIL! Values read: " << str << ", alpha, dbox (x1, y1, x2, y2), tresh " << d.box.alpha << ", " << d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << d.thresh << endl;
     }
@@ -164,13 +159,13 @@ vector<tGroundtruth> loadGroundtruth(string file_name, bool &success)
     {
       //cout << "Values read: " << str << ",alpha,  dbox (x1, y1, x2, y2) " << g.box.alpha << ", " << g.box.x1 << ", " << g.box.y1 << ", " << g.box.x2 << ", " << g.box.y2 << endl;
       g.box.type = str;
-      cout << "loadGroundTruths: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << g.box.x1 << " "<< g.box.y1 << " " << g.box.x2 << " "<< g.box.y2 << endl;
+      cout << "\tloadGroundTruths: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << g.box.x1 << " "<< g.box.y1 << " " << g.box.x2 << " "<< g.box.y2 << endl;
       groundtruth.push_back(g);
     }
-    else
+    /*else
     {
       cout << "Could not load ground truths in fscanf of file " << file_name << ", are you sure it is formatted correctly? (15 values per line) " << endl;
-    }
+    }*/
   }
   fclose(fp);
   //cout << "Successfully closed file and loaded ground truth " << endl;
@@ -554,8 +549,8 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
         stat.similarity = -1;
     }
   }
-  //cout << "\tCall to computeStatistics finished" << endl;
-  //cout << "\tStat values: (FN, TP, similarity): " << stat.fn << ", " << stat.tp << ", " << stat.similarity <<  endl;
+  cout << "\tCall to computeStatistics finished" << endl;
+  cout << "\tStat values: (FN, TP, similarity): " << stat.fn << ", " << stat.tp << ", " << stat.similarity <<  endl;
   return stat;
 }
 
@@ -817,8 +812,8 @@ bool eval(string path, string path_to_gt)
     // read ground truth and result poses
     bool gt_success, det_success;
     cout << "\t eval(): Trying to load ground truths from " << gt_dir + "/" + file_name << endl;
-    cout << "\t eval(): Trying to load detections from " << result_dir + "/" + file_name << endl;
     vector<tGroundtruth> gt = loadGroundtruth(gt_dir + "/" + file_name, gt_success);
+    cout << "\t eval(): Trying to load detections from " << result_dir + "/" + file_name << endl;
     vector<tDetection> det = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_person, eval_bike, eval_trafficlight, eval_trafficsign, eval_truck, det_success);
     groundtruth.push_back(gt);
     detections.push_back(det);

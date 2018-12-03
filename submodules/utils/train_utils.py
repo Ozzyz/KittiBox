@@ -177,7 +177,8 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
         r.score = rect.true_confidence
         r.classID = rect.class_id
         rects.append(r)
-    logging.info("Class ids of rects in add_rectangles after annorects: {}".format(set([rect.classID for rect in rects])))
+    if rects:
+        logging.info("Class ids of rects in add_rectangles after annorects: {}".format(set([rect.classID for rect in rects])))
     return image, rects
 
 def to_x1y1x2y2(box):

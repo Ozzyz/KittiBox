@@ -312,6 +312,8 @@ def _compute_rezoom_loss(hypes, rezoom_loss_input):
     return delta_confs_loss, delta_boxes_loss
 
 
+
+
 def loss(hypes, decoded_logits, labels):
     """Calculate the loss from the logits and the labels.
 
@@ -333,9 +335,7 @@ def loss(hypes, decoded_logits, labels):
     pred_boxes = decoded_logits['pred_boxes']
     pred_logits = decoded_logits['pred_logits']
     pred_confidences = decoded_logits['pred_confidences']
-    logging.info("boxes/ pred boxes shape:{}  {}".format(boxes.shape, pred_boxes.shape))
     logging.info("pred_logits shape: {}".format(pred_logits.shape))
-    logging.info("confidences/ pred_confidences shape {},  {}".format(confidences.shape, pred_confidences.shape))
     pred_confs_deltas = decoded_logits['pred_confs_deltas']
     pred_boxes_deltas = decoded_logits['pred_boxes_deltas']
 
@@ -346,23 +346,30 @@ def loss(hypes, decoded_logits, labels):
 
     # Compute confidence loss
     confidences = tf.reshape(confidences, (outer_size, 1))
-    true_classes = tf.reshape(tf.cast(tf.greater(confidences, 0), 'int64'),
-                              [outer_size])
+    logging.info("confidences/ pred_confidences shape {},  {}".format(confidences.shape, pred_confidences.shape))
+    # Since we have multiple classes we can't binarize labels - instead just cast them to int64 
+    # and calculate loss
+    true_classes = tf.reshape(tf.cast(confidences, 'int64'), [outer_size])
+    # Uncomment this if only single class (vehicle and background)
+    #true_classes = tf.reshape(tf.cast(tf.greater(confidences, 0), 'int64'),[outer_size])
     pred_classes = tf.reshape(pred_logits, [outer_size, hypes['num_classes']])
     mask_r = tf.reshape(mask, [outer_size])
     logging.info("Calculating sparse softmax xentropy w logits between pred and true classes shapes {} and {}".format(pred_classes.shape, true_classes.shape))
-    logging.info("True labels: {}".format(true_classes.eval()))
-    logging.info("pred_classes: {}".formaT(pred_classes.eval()))
+    logging.info("Pred logits: {}".format(pred_logits))
+    # Calculate loss 
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits=pred_classes, labels=true_classes)
-    logging.info("Found xentropy loss to be {}".format(cross_entropy))
     # ignore don't care areas
     cross_entropy_sum = (tf.reduce_sum(mask_r*cross_entropy))
     confidences_loss = cross_entropy_sum / outer_size * head[0]
+    logging.info("Found conf loss loss to be {}".format(confidences_loss))
 
     true_boxes = tf.reshape(boxes, (outer_size, hypes['rnn_len'], 4))
+    logging.info("trueboxes/ pred boxes shape:{}  {}".format(true_boxes.shape, pred_boxes.shape))
 
     # box loss for background prediction needs to be zerod out
+    # Therefore, create a mask where each entry is 1 if the cell is to be considered
+    # (if there is a class there) - else 0
     boxes_mask = tf.reshape(
         tf.cast(tf.greater(confidences, 0), 'float32'), (outer_size, 1, 1))
 
@@ -405,6 +412,10 @@ def loss(hypes, decoded_logits, labels):
         losses['delta_boxes_loss'] = delta_boxes_loss
         losses['delta_confs_loss'] = delta_confs_loss
 
+    logging.info("Total loss: {} ".format(total_loss))
+    logging.info("Confidence loss: {}".format(confidences_loss))
+    logging.info("Boxes loss: {}".format(boxes_loss))
+    logging.info("Weights loss: {}".format(weight_loss))
     return losses
 
 

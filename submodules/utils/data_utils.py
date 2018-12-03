@@ -150,7 +150,7 @@ def annotation_jitter(I, a_in, min_box_width=20, jitter_scale_min=0.9, jitter_sc
 
     I1 = scp.misc.imresize(I, jitter_scale, interp='cubic')
 
-    logging.info("Resized image with scale {}".format(jitter_scale))
+    #logging.info("Resized image with scale {}".format(jitter_scale))
 
     jitter_offset_x = np.random.random_integers(-jitter_offset, jitter_offset)
     jitter_offset_y = np.random.random_integers(-jitter_offset, jitter_offset)
