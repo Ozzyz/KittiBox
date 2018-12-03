@@ -822,6 +822,8 @@ bool eval(string path, string path_to_gt)
     vector<tDetection> det = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_person, eval_bike, eval_trafficlight, eval_trafficsign, eval_truck, det_success);
     groundtruth.push_back(gt);
     detections.push_back(det);
+    cout << "gt_dir " << gt_dir;
+    cout << "result dir " << result_dir;
 
     // check for errors
     if (!gt_success)
