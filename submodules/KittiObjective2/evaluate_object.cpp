@@ -19,8 +19,8 @@ STATIC EVALUATION PARAMETERS
 
 // holds the number of test images on the server
 // FIXME: Change this to be the number of test images of bdd100k
-int32_t N_MAXIMAGES = 50;
-int32_t N_TESTIMAGES = 50;
+int32_t N_MAXIMAGES = 30;
+int32_t N_TESTIMAGES = 30;
 // easy, moderate and hard evaluation level
 enum DIFFICULTY
 {
@@ -30,9 +30,9 @@ enum DIFFICULTY
 };
 
 // evaluation parameter
-const int32_t MIN_HEIGHT[3] = {40, 25, 25}; //40, 40};                       // minimum height for evaluated groundtruth/detections
-const int32_t MAX_OCCLUSION[3] = {0, 1, 2}; //{1000, 1000, 2000};       // maximum occlusion level of the groundtruth used for evaluation
-const double MAX_TRUNCATION[3] = {0.15, 0.3, 0.5}; //{1000, 1000, 1000}; // maximum truncation level of the groundtruth used for evaluation
+const int32_t MIN_HEIGHT[3] = {40, 25, 25};  // 40, 40};                       // minimum height for evaluated groundtruth/detections
+const int32_t MAX_OCCLUSION[3] = {0, 1, 2}; // {1000, 1000, 2000};       // maximum occlusion level of the groundtruth used for evaluation
+const double MAX_TRUNCATION[3] = {0.15, 0.3, 0.5};  // {1000, 1000, 1000}; // maximum truncation level of the groundtruth used for evaluation
 
 // evaluated object classes
 enum CLASSES
@@ -47,7 +47,7 @@ enum CLASSES
 
 // parameters varying per class
 vector<string> CLASS_NAMES;
-const double MIN_OVERLAP[3] = {0.7, 0.5, 0.5}; //{0.2, 0.2, 0.2, 0.2, 0.2, 0.2}; // the minimum overlap required for evaluation
+const double MIN_OVERLAP[3] = {0.5, 0.5, 0.5}; // {0.2, 0.2, 0.2}; // the minimum overlap required for evaluation
 
 // no. of recall steps that should be evaluated (discretized)
 const double N_SAMPLE_PTS = 41;
@@ -100,12 +100,12 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
         // TODO: Remove this once we take multiple clases
       detections.push_back(d);
       //}
-      //cout << "loadDetections: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << d.box.x1 << " "<< d.box.y1 << " " << d.box.x2 << " "<< d.box.y2 << endl;
+      cout << "loadDetections: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << d.box.x1 << " "<< d.box.y1 << " " << d.box.x2 << " "<< d.box.y2 << endl;
       //cout << "SUCESS:!!! Values read: " << str << ", alpha, dbox (x1, y1, x2, y2), tresh " << d.box.alpha << d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << d.thresh <<  endl;
       // orientation=-10 is invalid, AOS is not evaluated if at least one orientation is invalid
       if (d.box.alpha == -10)
         compute_aos = false;
-      cout << "\tType of detection: " << d.box.type << endl;
+      //cout << "\tType of detection: " << d.box.type << endl;
       // a class is only evaluated if it is detected at least once
       if (!eval_person && !strcasecmp(d.box.type.c_str(), "person"))
         eval_person = true;
@@ -571,32 +571,37 @@ bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<
   vector<vector<int32_t>> ignored_gt, ignored_det; // index of ignored gt detection for current class/difficulty
   vector<vector<tGroundtruth>> dontcare;           // index of dontcare areas, included in ground truth
   cout << "\tIterating through all test images () " << N_TESTIMAGES << " test images" << endl;
+  
   // for all test images do
   for (int32_t i = 0; i < N_TESTIMAGES; i++)
   {
-
     // holds ignored ground truth, ignored detections and dontcare areas for current frame
     vector<int32_t> i_gt, i_det;
     vector<tGroundtruth> dc;
 
     // only evaluate objects of current class and ignore occluded, truncated objects
     cleanData(current_class, groundtruth[i], detections[i], i_gt, dc, i_det, n_gt, difficulty);
-
+    
     ignored_gt.push_back(i_gt);
     ignored_det.push_back(i_det);
     dontcare.push_back(dc);
+
     // compute statistics to get recall values
     tPrData pr_tmp = tPrData();
     pr_tmp = computeStatistics(current_class, groundtruth[i], detections[i], dc, i_gt, i_det, true);
+    
     // add detection scores to vector over all images
     for (int32_t j = 0; j < pr_tmp.v.size(); j++)
       v.push_back(pr_tmp.v[j]);
   }
+
   // get scores that must be evaluated for recall discretization
   thresholds = getThresholds(v, n_gt);
+  
   // compute TP,FP,FN for relevant scores
   vector<tPrData> pr;
   pr.assign(thresholds.size(), tPrData());
+  
   // FIXME: This should iterate over all images in dir
   cout << "\teval_class(): Iterating over all " << N_TESTIMAGES << " testimages" << endl;
   for (int32_t i = 0; i < N_TESTIMAGES; i++)
@@ -797,8 +802,8 @@ bool eval(string path, string path_to_gt)
 
   // holds wether orientation similarity shall be computed (might be set to false while loading detections)
   // and which labels where provided by this submission
-  bool compute_aos = false, eval_car = true, eval_person = true, eval_bike = true;
-  bool eval_trafficlight = true, eval_trafficsign = true, eval_truck = true;
+  bool compute_aos = false, eval_car = true, eval_person = false, eval_bike = false;
+  bool eval_trafficlight = false, eval_trafficsign = false, eval_truck = false;
   // for all images read groundtruth and detections
   cout << "Loading detections..." << endl;
 
@@ -838,11 +843,11 @@ bool eval(string path, string path_to_gt)
     }
   }
   cout << "Eval car: " << eval_car << endl; 
-  cout << "Eval person: " << eval_person << endl; 
-  cout << "Eval bike: " << eval_bike << endl; 
-  cout << "Eval traffic sign: " << eval_trafficsign << endl; 
-  cout << "Eval traffic light: " << eval_trafficlight << endl; 
-  cout << "Eval truck: " << eval_truck << endl; 
+  //cout << "Eval person: " << eval_person << endl; 
+  //cout << "Eval bike: " << eval_bike << endl; 
+  //cout << "Eval traffic sign: " << eval_trafficsign << endl; 
+  //cout << "Eval traffic light: " << eval_trafficlight << endl; 
+  //cout << "Eval truck: " << eval_truck << endl; 
   eval_class_and_plot(eval_car, CAR, result_dir, plot_dir, groundtruth, detections, compute_aos);
   //eval_class_and_plot(eval_person, PERSON, result_dir, plot_dir, groundtruth, detections, compute_aos);
   //eval_class_and_plot(eval_bike, BIKE, result_dir, plot_dir, groundtruth, detections, compute_aos);
