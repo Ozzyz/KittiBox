@@ -30,9 +30,9 @@ enum DIFFICULTY
 };
 
 // evaluation parameter
-const int32_t MIN_HEIGHT[3] = {40, 25, 25};  // 40, 40};                       // minimum height for evaluated groundtruth/detections
-const int32_t MAX_OCCLUSION[3] = {0, 1, 2}; // {1000, 1000, 2000};       // maximum occlusion level of the groundtruth used for evaluation
-const double MAX_TRUNCATION[3] = {0.15, 0.3, 0.5};  // {1000, 1000, 1000}; // maximum truncation level of the groundtruth used for evaluation
+const int32_t MIN_HEIGHT[3] = {40, 40, 40};     // 25, 25};              // minimum height for evaluated groundtruth/detections
+const int32_t MAX_OCCLUSION[3] = {1000, 1000, 2000}; // {0, 1, 2};      // maximum occlusion level of the groundtruth used for evaluation
+const double MAX_TRUNCATION[3] = {1000, 1000, 1000}; // {0.15, 0.3, 0.5}; // maximum truncation level of the groundtruth used for evaluation
 
 // evaluated object classes
 enum CLASSES
@@ -47,7 +47,7 @@ enum CLASSES
 
 // parameters varying per class
 vector<string> CLASS_NAMES;
-const double MIN_OVERLAP[3] = {0.5, 0.5, 0.5}; // {0.2, 0.2, 0.2}; // the minimum overlap required for evaluation
+const double MIN_OVERLAP[3] =  {0.2, 0.2, 0.2}; // {0.5, 0.5, 0.5}; // the minimum overlap required for evaluation
 
 // no. of recall steps that should be evaluated (discretized)
 const double N_SAMPLE_PTS = 41;
@@ -566,8 +566,8 @@ EVALUATE CLASS-WISE
 bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<vector<tGroundtruth>> &groundtruth, const vector<vector<tDetection>> &detections, bool compute_aos, vector<double> &precision, vector<double> &aos, DIFFICULTY difficulty)
 {
   int32_t N_IMAGES = min(groundtruth.size(), detections.size());
-  cout << "gt size: " << groundtruth.size();
-  cout << "dt size: " << detections.size();
+  cout << "gt size: " << groundtruth.size() << endl;
+  cout << "dt size: " << detections.size() << endl;
   // init
   int32_t n_gt = 0;                                // total no. of gt (denominator of recall)
   vector<double> v, thresholds;                    // detection scores, evaluated for recall discretization
@@ -606,7 +606,7 @@ bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<
   pr.assign(thresholds.size(), tPrData());
   
   // FIXME: This should iterate over all images in dir
-  cout << "\teval_class(): Iterating over all " << N_IMAGES << " testimages" << endl;
+  cout << "\teval_class(): Iterating over all " << N_IMAGES << " test images" << endl;
   for (int32_t i = 0; i < N_IMAGES; i++)
   {
 
@@ -830,8 +830,8 @@ bool eval(string path, string path_to_gt)
     vector<tDetection> det = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_person, eval_bike, eval_trafficlight, eval_trafficsign, eval_truck, det_success);
     groundtruth.push_back(gt);
     detections.push_back(det);
-    cout << "gt_dir " << gt_dir;
-    cout << "result dir " << result_dir;
+    cout << "gt_dir " << gt_dir << endl;
+    cout << "result_dir " << result_dir << endl;
 
     // check for errors
     if (!gt_success)
