@@ -19,8 +19,8 @@ STATIC EVALUATION PARAMETERS
 
 // holds the number of test images on the server
 // FIXME: Change this to be the number of test images of bdd100k
-int32_t N_MAXIMAGES = 30;
-int32_t N_TESTIMAGES = 30;
+int32_t N_MAXIMAGES = 20;
+int32_t N_TESTIMAGES = 20;
 // easy, moderate and hard evaluation level
 enum DIFFICULTY
 {
@@ -565,15 +565,18 @@ EVALUATE CLASS-WISE
 // TODO: Change the variable N_TESTIMAGES to the correct number for bdd100k
 bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<vector<tGroundtruth>> &groundtruth, const vector<vector<tDetection>> &detections, bool compute_aos, vector<double> &precision, vector<double> &aos, DIFFICULTY difficulty)
 {
+  int32_t N_IMAGES = min(groundtruth.size(), detections.size());
+  cout << "gt size: " << groundtruth.size();
+  cout << "dt size: " << detections.size();
   // init
   int32_t n_gt = 0;                                // total no. of gt (denominator of recall)
   vector<double> v, thresholds;                    // detection scores, evaluated for recall discretization
   vector<vector<int32_t>> ignored_gt, ignored_det; // index of ignored gt detection for current class/difficulty
   vector<vector<tGroundtruth>> dontcare;           // index of dontcare areas, included in ground truth
-  cout << "\tIterating through all test images () " << N_TESTIMAGES << " test images" << endl;
+  cout << "\tIterating through all test images () " << N_IMAGES << " test images" << endl;
   
   // for all test images do
-  for (int32_t i = 0; i < N_TESTIMAGES; i++)
+  for (int32_t i = 0; i < N_IMAGES; i++)
   {
     // holds ignored ground truth, ignored detections and dontcare areas for current frame
     vector<int32_t> i_gt, i_det;
@@ -603,8 +606,8 @@ bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<
   pr.assign(thresholds.size(), tPrData());
   
   // FIXME: This should iterate over all images in dir
-  cout << "\teval_class(): Iterating over all " << N_TESTIMAGES << " testimages" << endl;
-  for (int32_t i = 0; i < N_TESTIMAGES; i++)
+  cout << "\teval_class(): Iterating over all " << N_IMAGES << " testimages" << endl;
+  for (int32_t i = 0; i < N_IMAGES; i++)
   {
 
     // for all scores/recall thresholds do:
