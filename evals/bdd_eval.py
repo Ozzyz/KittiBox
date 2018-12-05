@@ -7,8 +7,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+#if os.name == 'posix' and sys.version_info[0] < 3:
+#    import subprocess32 as subprocess
+#else:
 import subprocess
-
 import scipy as scp
 import scipy.misc
 
@@ -121,6 +123,7 @@ def create_eval_stats(detection_filepath, phase="train"):
         # Skip classes that have no detections
         if not os.path.isfile(res_file):
             logging.warn("There are no detections for class {}".format(class_name))
+            eval_list.append(("{}: {}   {}".format(class_name, phase, mode), 0))
             continue
         with open(res_file) as f:
             for mode in ['easy', 'medium', 'hard']:
@@ -140,7 +143,7 @@ def call_kitti_eval_code(eval_cmd, val_path, label_dir):
         # Call eval command with val_path (val_out)
         cmd = [eval_cmd, val_path, label_dir]
         popen = subprocess.Popen(
-            cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True).communicate()
+            cmd, stdout=sys.stdout, stderr=sys.stdout, universal_newlines=True).communicate()
     except OSError as error:
         logging.warning("Failed to run run kitti evaluation code.")
         logging.warning("Please run: `cd submodules/KittiObjective2/ && make`")
