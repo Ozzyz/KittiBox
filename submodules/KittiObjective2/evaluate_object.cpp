@@ -502,7 +502,7 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
   vector< vector<tGroundtruth> > dontcare;            // index of dontcare areas, included in ground truth
 
   // for all test images do
-  for (int32_t i=0; i<N_TESTIMAGES; i++){
+  for (int32_t i=0; i<detections.size(); i++){
 
     // holds ignored ground truth, ignored detections and dontcare areas for current frame
     vector<int32_t> i_gt, i_det;
@@ -529,7 +529,7 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
   // compute TP,FP,FN for relevant scores
   vector<tPrData> pr;
   pr.assign(thresholds.size(),tPrData());
-  for (int32_t i=0; i<N_TESTIMAGES; i++){
+  for (int32_t i=0; i<detections.size(); i++){
 
     // for all scores/recall thresholds do:
     for(int32_t t=0; t<thresholds.size(); t++){
@@ -638,6 +638,54 @@ inline bool exists_test0 (const std::string& name) {
     return ( access( name.c_str(), F_OK ) != -1 );
 }
 
+#include <fstream>
+#include <experimental/filesystem>
+
+bool has_suffix(const std::string &str, const std::string &suffix){
+  return str.size() >= suffix.size() &&
+         str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+void load_gt_and_det(string path, string result_dir, string gt_dir, vector<vector<tGroundtruth>> &groundtruth, vector<vector<tDetection>> &detections,  bool &eval_car, bool &eval_pedestrian, bool &eval_cyclist, bool &compute_aos){
+  // for all images read groundtruth and detections
+  // Get all filenames from gt
+  // This is necessary since KittiBox only uses numbers as filenames, but we have IDs
+  namespace fs = std::experimental::filesystem;
+  cout << "Loading detections..." << endl;
+  // Iterate through all files, loading detections and groundtruths. 
+  for (auto &file_path : fs::directory_iterator(path))
+  {
+    // file name
+    string full_file_name = file_path.path().string();
+    // Since the file names are given as absolute paths, we need to find the last folder separator and ignore everything before this.
+    string file_name(full_file_name.substr(full_file_name.rfind("/") + 1));
+    cout << "\tload_gt_and_det: reading file " << file_name << endl;
+    if (!exists_test0(result_dir + "/" + file_name) || !has_suffix(file_name, ".txt") || has_suffix(file_name, "orientation.txt") || has_suffix(file_name, "detection.txt"))
+    {
+      cout << "\t" << result_dir + "/" + file_name << " does not exist or does not contain detections - skipping" << endl;
+      continue;
+    }
+
+    // read ground truth and result poses
+    bool gt_success, det_success;
+    cout << "\t eval(): Trying to load ground truths from " << gt_dir + "/" + file_name << endl;
+    vector<tGroundtruth> gt = loadGroundtruth(gt_dir + "/" + file_name, gt_success);
+    cout << "\t eval(): Trying to load detections from " << result_dir + "/" + file_name << endl;
+    vector<tDetection>   det  = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_pedestrian, eval_cyclist, det_success);
+    groundtruth.push_back(gt);
+    detections.push_back(det);
+
+    // check for errors
+    if (!gt_success){
+      cout << "eval(): ERROR: Couldn't read:" << file_name << " of ground truth (loadGroundTruth)." << endl;
+    }
+    if (!det_success){
+      cout << "eval(): ERROR: Couldn't read:" << file_name << " of detections (loadDetections) " << endl;
+    }
+  }
+  cout << "Size of gts and detections after loading: " << groundtruth.size() << ", " << detections.size() << endl;
+}
+
 bool eval(string path, string path_to_gt, Mail* mail){
 
   // set some global parameters
@@ -658,38 +706,8 @@ bool eval(string path, string path_to_gt, Mail* mail){
   // holds wether orientation similarity shall be computed (might be set to false while loading detections)
   // and which labels where provided by this submission
   bool compute_aos=false, eval_car=true, eval_pedestrian=false, eval_cyclist=false;
+  load_gt_and_det(path, result_dir, gt_dir, groundtruth, detections, eval_car, eval_pedestrian, eval_cyclist, compute_aos);
 
-  // for all images read groundtruth and detections
-  mail->msg("Loading detections...");
-  for (int32_t i=0; i<N_MAXIMAGES; i++) {
-
-    // file name
-    char file_name[256];
-    sprintf(file_name,"%06d.txt",i);
-
-    if(!exists_test0(result_dir + "/" + file_name)) {
-      continue;
-    }
-
-
-    // read ground truth and result poses
-    bool gt_success,det_success;
-    vector<tGroundtruth> gt   = loadGroundtruth(gt_dir + "/" + file_name,gt_success);
-    vector<tDetection>   det  = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_pedestrian, eval_cyclist,det_success);
-    groundtruth.push_back(gt);
-    detections.push_back(det);
-
-    // check for errors
-    if (!gt_success) {
-      mail->msg("ERROR: Couldn't read: %s of ground truth. Please write me an email!", file_name);
-      return false;
-    }
-    if (!det_success) {
-      mail->msg("ERROR: Couldn't read: %s", file_name);
-      return false;
-    }
-  }
-  mail->msg("  done.");
 
   // holds pointers for result files
   FILE *fp_det=0, *fp_ori=0;
