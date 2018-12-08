@@ -185,8 +185,8 @@ def _load_kitti_txt(kitti_txt, hypes, jitter=False, random_shuffel=True):
     """Take the txt file and net configuration and create a generator
     that outputs a jittered version of a random image from the annolist
     that is mean corrected."""
-    base_path = "/notebooks"
-    #base_path = os.path.realpath(os.path.dirname(kitti_txt))
+    #base_path = "/notebooks"
+    base_path = os.path.realpath(os.path.dirname(kitti_txt))
     files = [line.rstrip() for line in open(kitti_txt)]
     if hypes['data']['truncate_data']:
         files = files[:10]
