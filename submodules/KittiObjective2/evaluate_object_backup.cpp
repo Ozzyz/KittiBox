@@ -10,8 +10,7 @@
 #include <unistd.h>
 #include <string>
 
-#include "mail.h"
-
+#include "eval_structs.h"
 using namespace std;
 
 /*=======================================================================
@@ -19,92 +18,47 @@ STATIC EVALUATION PARAMETERS
 =======================================================================*/
 
 // holds the number of test images on the server
-const int32_t N_MAXIMAGES = 7518;
-const int32_t N_TESTIMAGES = 481;
+// FIXME: Change this to be the number of test images of bdd100k 
+int32_t N_MAXIMAGES = 10;
+int32_t N_TESTIMAGES = 10;
 
 // easy, moderate and hard evaluation level
 enum DIFFICULTY{EASY=0, MODERATE=1, HARD=2};
 
 // evaluation parameter
-const int32_t MIN_HEIGHT[3]     = {40, 25, 25};     // minimum height for evaluated groundtruth/detections
-const int32_t MAX_OCCLUSION[3]  = {0, 0, 1};        // maximum occlusion level of the groundtruth used for evaluation
-const double  MAX_TRUNCATION[3] = {0, 1, 1}; // maximum truncation level of the groundtruth used for evaluation
+const int32_t MIN_HEIGHT[6]     = {40, 25, 25, 10, 10, 40};     // minimum height for evaluated groundtruth/detections
+const int32_t MAX_OCCLUSION[6]  = {1000, 1000, 2000, 1, 1, 1};        // maximum occlusion level of the groundtruth used for evaluation
+const double  MAX_TRUNCATION[6] = {1000, 1000, 1000, 0.2, 0.2, 0.2}; // maximum truncation level of the groundtruth used for evaluation
 
 // evaluated object classes
-enum CLASSES{CAR=0, PEDESTRIAN=1, CYCLIST=2};
+enum CLASSES{CAR=0, PEDESTRIAN=1, CYCLIST=2, TRAFFIC_LIGHT=3, TRAFFIC_SIGN=4, TRUCK=5};
 
 // parameters varying per class
 vector<string> CLASS_NAMES;
-const double   MIN_OVERLAP[3] = {0.4, 0.4, 0.4}; //{0.7, 0.5, 0.5};                  // the minimum overlap required for evaluation
+const double   MIN_OVERLAP[6] = {0.2, 0.3, 0.3, 0.5, 0.5, 0.5};                  // the minimum overlap required for evaluation
 
 // no. of recall steps that should be evaluated (discretized)
-const double N_SAMPLE_PTS = 41;
+const double N_SAMPLE_PTS = 10;
 
 // initialize class names
 void initGlobals () {
   CLASS_NAMES.push_back("car");
-  CLASS_NAMES.push_back("person");
-  CLASS_NAMES.push_back("bike");
+  CLASS_NAMES.push_back("pedestrian");
+  CLASS_NAMES.push_back("cyclist");
+  CLASS_NAMES.push_back("traffic_light");
+  CLASS_NAMES.push_back("traffic_sign");
+  CLASS_NAMES.push_back("truck");
 }
-
-/*=======================================================================
-DATA TYPES FOR EVALUATION
-=======================================================================*/
-
-// holding data needed for precision-recall and precision-aos
-struct tPrData {
-  vector<double> v;           // detection score for computing score thresholds
-  double         similarity;  // orientation similarity
-  int32_t        tp;          // true positives
-  int32_t        fp;          // false positives
-  int32_t        fn;          // false negatives
-  tPrData () :
-    similarity(0), tp(0), fp(0), fn(0) {}
-};
-
-// holding bounding boxes for ground truth and detections
-struct tBox {
-  string  type;     // object type as car, pedestrian or cyclist,...
-  double   x1;      // left corner
-  double   y1;      // top corner
-  double   x2;      // right corner
-  double   y2;      // bottom corner
-  double   alpha;   // image orientation
-  tBox (string type, double x1,double y1,double x2,double y2,double alpha) :
-    type(type),x1(x1),y1(y1),x2(x2),y2(y2),alpha(alpha) {}
-};
-
-// holding ground truth data
-struct tGroundtruth {
-  tBox    box;        // object type, box, orientation
-  double  truncation; // truncation 0..1
-  int32_t occlusion;  // occlusion 0,1,2 (non, partly, fully)
-  tGroundtruth () :
-    box(tBox("invalild",-1,-1,-1,-1,-10)),truncation(-1),occlusion(-1) {}
-  tGroundtruth (tBox box,double truncation,int32_t occlusion) :
-    box(box),truncation(truncation),occlusion(occlusion) {}
-  tGroundtruth (string type,double x1,double y1,double x2,double y2,double alpha,double truncation,int32_t occlusion) :
-    box(tBox(type,x1,y1,x2,y2,alpha)),truncation(truncation),occlusion(occlusion) {}
-};
-
-// holding detection data
-struct tDetection {
-  tBox    box;    // object type, box, orientation
-  double  thresh; // detection score
-  tDetection ():
-    box(tBox("invalid",-1,-1,-1,-1,-10)),thresh(-1000) {}
-  tDetection (tBox box,double thresh) :
-    box(box),thresh(thresh) {}
-  tDetection (string type,double x1,double y1,double x2,double y2,double alpha,double thresh) :
-    box(tBox(type,x1,y1,x2,y2,alpha)),thresh(thresh) {}
-};
 
 /*=======================================================================
 FUNCTIONS TO LOAD DETECTION AND GROUND TRUTH DATA ONCE, SAVE RESULTS
 =======================================================================*/
-
+// TODO: Expand this function to include all classes in bdd100k
 vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eval_car, bool &eval_pedestrian, bool &eval_cyclist, bool &success) {
-
+  /* Loads the detections from the model from the given filename.
+     Returns a vector of detections where each element is of type tDetection struct.  
+   */ 
+  cout << "Loading detections " << endl;
   // holds all detections (ignored detections are indicated by an index vector
   vector<tDetection> detections;
   FILE *fp = fopen(file_name.c_str(),"r");
@@ -112,18 +66,24 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
     success = false;
     return detections;
   }
+  cout << "Loading detections from " << file_name << endl;
   while (!feof(fp)) {
     tDetection d;
     double trash;
     char str[255];
-    if (fscanf(fp, "%s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+    int num_args = fscanf(fp, "%s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
                    str, &trash,    &trash,    &d.box.alpha,
-                   &d.box.x1,   &d.box.y1, &d.box.x2, &d.box.y2,
-                   &trash,      &trash,    &trash,    &trash, 
-                   &trash,      &trash,    &trash,    &d.thresh )==16) {
+                   &d.box.x1,      &d.box.y1, &d.box.x2,   &d.box.y2,
+                   &trash,         &trash,    &trash,      &trash, 
+                   &trash,         &trash,    &trash,      &d.thresh);
+    if(num_args == 16){
       d.box.type = str;
-      detections.push_back(d);
-
+      if(!strcasecmp(d.box.type.c_str(), "car")){
+         // TODO: Remove this once we take multiple clases
+         detections.push_back(d);
+      }
+      //cout << "loadDetections: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << d.box.x1 << " "<< d.box.y1 << " " << d.box.x2 << " "<< d.box.y2 << endl;
+      //cout << "SUCESS:!!! Values read: " << str << ", alpha, dbox (x1, y1, x2, y2), tresh " << d.box.alpha << d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << d.thresh <<  endl;
       // orientation=-10 is invalid, AOS is not evaluated if at least one orientation is invalid
       if(d.box.alpha==-10)
         compute_aos = false;
@@ -135,19 +95,31 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
         eval_pedestrian = true;
       if(!eval_cyclist && !strcasecmp(d.box.type.c_str(), "cyclist"))
         eval_cyclist = true;
+    }else{
+      cout << "\t\t\t loadDetections: Could not load detections from fscanf of file " << file_name << ", are you sure it is formatted correctly? (16 values per line)" <<  endl;
+      cout << "Note that classes other than car, pedestrian and cyclists are ignored" << endl;
+      cout << "FAIL! Values read: " << str << ", alpha, dbox (x1, y1, x2, y2), tresh " << d.box.alpha << ", "<< d.box.x1 << d.box.y1 << d.box.x2 << d.box.y2 << d.thresh <<  endl;
     }
   }
   fclose(fp);
   success = true;
+  cout << "Successfully closed file and loaded detections " << endl;
+  cout << "detections length: " << detections.size() << endl;
   return detections;
 }
 
 vector<tGroundtruth> loadGroundtruth(string file_name,bool &success) {
+  /* Attempts to load all ground truths (kitti-formatted bboxes) from the given filename 
+     and returns a vector of groundtruths where each element is a tGroundTruth struct.
+     Success is set to false if the function fails to load the file given by file_name.
+  */ 
 
   // holds all ground truth (ignored ground truth is indicated by an index vector
   vector<tGroundtruth> groundtruth;
+  cout << "Loading ground truth, filename: " << file_name << endl;
   FILE *fp = fopen(file_name.c_str(),"r");
   if (!fp) {
+    cout << "loadGroundtruth: Failed to load filename " << file_name << endl;
     success = false;
     return groundtruth;
   }
@@ -155,34 +127,53 @@ vector<tGroundtruth> loadGroundtruth(string file_name,bool &success) {
     tGroundtruth g;
     double trash;
     char str[255];
-    if (fscanf(fp, "%s %lf %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+    // The %s argument of fscanf expects a string without whitespaces.
+    int num_args = fscanf(fp, "%s %lf %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
                    str, &g.truncation, &g.occlusion, &g.box.alpha,
                    &g.box.x1,   &g.box.y1,     &g.box.x2,    &g.box.y2,
                    &trash,      &trash,        &trash,       &trash, 
-                   &trash,      &trash,        &trash )==15) {
+                   &trash,      &trash,        &trash );
+    if(num_args == 15){
+       cout << "Values read: " << str << ",alpha,  dbox (x1, y1, x2, y2) " << g.box.alpha << ", " <<  g.box.x1 << ", " <<  g.box.y1 << ", " <<  g.box.x2 << ", " <<  g.box.y2 << endl;
       g.box.type = str;
-      groundtruth.push_back(g);
+      //cout << "loadGroundTruths: Loaded values " << "Class: " << str << ", X1,Y1,X2,Y2: " << g.box.x1 << " "<< g.box.y1 << " " << g.box.x2 << " "<< g.box.y2 << endl;
+      if(!strcasecmp(g.box.type.c_str(), "car")){
+          groundtruth.push_back(g);
+      }
+    }else{
+      cout << "Could not load ground truths in fscanf of file " << file_name << ", are you sure it is formatted correctly? (15 values per line) " <<  endl; 
     }
   }
   fclose(fp);
-  success = true;
+  cout << "Successfully closed file and loaded ground truth " << endl;
+  cout << "groundtruth length: " << groundtruth.size() << endl; 
+ success = true;
   return groundtruth;
 }
 
 void saveStats (const vector<double> &precision, const vector<double> &aos, FILE *fp_det, FILE *fp_ori) {
-
+  /* Writes the precision vector to fp_det, and aos-vector to fp_ori if they are non-empty */ 
+  cout << "Saving stats to file " << endl;
   // save precision to file
-  if(precision.empty())
+  if(precision.empty()){
+    cout << "Precision vector empty -- exiting. " << endl;
     return;
-  for (int32_t i=0; i<precision.size(); i++)
-    fprintf(fp_det,"%f ",precision[i]);
+  }
+  cout << "Writing precision elements: ";
+  for (int32_t i=0; i<precision.size(); i++){
+     cout << "," << precision[i];
+     fprintf(fp_det,"%f ",precision[i]);
+  }
+  cout << endl;
   fprintf(fp_det,"\n");
 
   // save orientation similarity, only if there were no invalid orientation entries in submission (alpha=-10)
   if(aos.empty())
     return;
-  for (int32_t i=0; i<aos.size(); i++)
+  for (int32_t i=0; i<aos.size(); i++){
+    cout << "Writing " << aos[i] << " to fp_ori" << endl;
     fprintf(fp_ori,"%f ",aos[i]);
+  }
   fprintf(fp_ori,"\n");
 }
 
@@ -193,7 +184,6 @@ EVALUATION HELPER FUNCTIONS
 // criterion defines whether the overlap is computed with respect to both areas (ground truth and detection)
 // or with respect to box a or b (detection and "dontcare" areas)
 inline double boxoverlap(tBox a, tBox b, int32_t criterion=-1){
-
   // overlap is invalid in the beginning
   double o = -1;
 
@@ -202,7 +192,7 @@ inline double boxoverlap(tBox a, tBox b, int32_t criterion=-1){
   double y1 = max(a.y1, b.y1);
   double x2 = min(a.x2, b.x2);
   double y2 = min(a.y2, b.y2);
-
+  
   // compute width and height of overlapping area
   double w = x2-x1;
   double h = y2-y1;
@@ -224,12 +214,16 @@ inline double boxoverlap(tBox a, tBox b, int32_t criterion=-1){
   else if(criterion==1) // bbox_b
     o = inter / b_area;
 
+  //cout << "Calculating overlap between box 1: (" << a.x1 << ", " << a.y1 << ", " << a.x2 << ", " << a.y2;
+  //cout << ") and box 2: (" << b.x1 << ", " << b.y1 << ", " << b.x2 << ", " << b.y2 << endl;
+  //cout << "Overlap is : " << o << endl;
   // overlap
   return o;
 }
 
 vector<double> getThresholds(vector<double> &v, double n_groundtruth){
 
+  cout << "\tComputed threshold" << endl;
   // holds scores needed to compute N_SAMPLE_PTS recall values
   vector<double> t;
 
@@ -245,14 +239,15 @@ vector<double> getThresholds(vector<double> &v, double n_groundtruth){
     // in this case, skip the current detection score
     double l_recall, r_recall, recall;
     l_recall = (double)(i+1)/n_groundtruth;
-    if(i<(v.size()-1))
+    if(i<(v.size()-1)){
       r_recall = (double)(i+2)/n_groundtruth;
-    else
+    }
+    else{
       r_recall = l_recall;
-
-    if( (r_recall-current_recall) < (current_recall-l_recall) && i<(v.size()-1))
+    }
+    if( (r_recall-current_recall) < (current_recall-l_recall) && i<(v.size()-1)){
       continue;
-
+    }
     // left recall is the best approximation, so use this and goto next recall step for approximation
     recall = l_recall;
 
@@ -264,10 +259,15 @@ vector<double> getThresholds(vector<double> &v, double n_groundtruth){
 }
 
 void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vector<tDetection> &det, vector<int32_t> &ignored_gt, vector<tGroundtruth> &dc, vector<int32_t> &ignored_det, int32_t &n_gt, DIFFICULTY difficulty){
-
+  /* Iterates through the ground truths (gt) and ignores all ground truths that are too occluded (defined by MAX_OCCLUSION[difficulty], MAX_TRUNCATION and MIN_HEIGHT)
+     Then, it creates a vector (ignored_gt) that is 0 on index i if gt[i] should not be ignored. Else, it is ignored.
+   */ 
+  cout << "Clean data called, current class : " << current_class << endl;
+  cout << "Current class string: " << CLASS_NAMES[current_class].c_str() << endl;
   // extract ground truth bounding boxes for current evaluation class
-  for(int32_t i=0;i<gt.size(); i++){
-
+  
+  cout << "computeStatistics: Computing TP, FP and FN" << endl;
+    for (int32_t i=0;i<gt.size(); i++){
     // only bounding boxes with a minimum height are used for evaluation
     double height = gt[i].box.y2 - gt[i].box.y1;
 
@@ -276,9 +276,9 @@ void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vect
     int32_t valid_class;
 
     // all classes without a neighboring class
-    if(!strcasecmp(gt[i].box.type.c_str(), CLASS_NAMES[current_class].c_str()))
+    if(!strcasecmp(gt[i].box.type.c_str(), CLASS_NAMES[current_class].c_str())){
       valid_class = 1;
-
+    }
     // classes with a neighboring class
     else if(!strcasecmp(CLASS_NAMES[current_class].c_str(), "Pedestrian") && !strcasecmp("Person_sitting", gt[i].box.type.c_str()))
       valid_class = 0;
@@ -292,9 +292,10 @@ void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vect
     // ground truth is ignored, if occlusion, truncation exceeds the difficulty or ground truth is too small
     // (doesn't count as FN nor TP, although detections may be assigned)
     bool ignore = false;
-    if(gt[i].occlusion>MAX_OCCLUSION[difficulty] || gt[i].truncation>MAX_TRUNCATION[difficulty] || height<MIN_HEIGHT[difficulty])
+    if(gt[i].occlusion>MAX_OCCLUSION[difficulty] || gt[i].truncation>MAX_TRUNCATION[difficulty] || height<MIN_HEIGHT[difficulty]){
       ignore = true;
-
+      cout << "cleanData: Ignoring entry - occlusion: " << (gt[i].occlusion>MAX_OCCLUSION[difficulty]) << ", truncation: " << (gt[i].truncation>MAX_TRUNCATION[difficulty])  << ", min_height: " << (height<MIN_HEIGHT[difficulty]) << endl;
+    }
     // set ignored vector for ground truth
     // current class and not ignored (total no. of ground truth is detected for recall denominator)
     if(valid_class==1 && !ignore){
@@ -335,22 +336,26 @@ void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vect
 }
 
 tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt, const vector<tDetection> &det, const vector<tGroundtruth> &dc, const vector<int32_t> &ignored_gt, const vector<int32_t>  &ignored_det, bool compute_fp, bool compute_aos=false, double thresh=0, bool debug=false){
-
+  cout << "Computing statistics of current classes " << endl;
   tPrData stat = tPrData();
   const double NO_DETECTION = -10000000;
   vector<double> delta;            // holds angular difference for TPs (needed for AOS evaluation)
   vector<bool> assigned_detection; // holds wether a detection was assigned to a valid or ignored ground truth
   assigned_detection.assign(det.size(), false);
+  cout << "\tAssigning assigned_detection size: " << det.size() << endl;
   vector<bool> ignored_threshold;
   ignored_threshold.assign(det.size(), false); // holds detections with a threshold lower than thresh if FP are computed
 
   // detections with a low score are ignored for computing precision (needs FP)
-  if(compute_fp)
-    for(int32_t i=0; i<det.size(); i++)
+  if(compute_fp){
+    for(int32_t i=0; i<det.size(); i++){
+     // cout << "Thresh of det: " << det[i].thresh << " thresh of computestatistics: " << thresh << endl;
       if(det[i].thresh<thresh)
         ignored_threshold[i] = true;
-
+    }
+  }
   // evaluate all ground truth boxes
+  cout << "\tcomputeStatistics: Entering iteration over all gts in vector (" << gt.size() << ")" <<  endl;
   for(int32_t i=0; i<gt.size(); i++){
 
     // this ground truth is not of the current or a neighboring class and therefore ignored
@@ -369,16 +374,18 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
     for(int32_t j=0; j<det.size(); j++){
 
       // detections not of the current class, already assigned or with a low threshold are ignored
-      if(ignored_det[j]==-1)
-        continue;
-      if(assigned_detection[j])
-        continue;
-      if(ignored_threshold[j])
-        continue;
+      if(ignored_det[j]==-1){
+        //cout << "\tSkipping " << j << "  because of ignored det == -1" << endl;
+        continue;}
+      if(assigned_detection[j]){
+        //cout << "\tSkipping " << j << " because of already assigned detection" << endl;
+        continue;}
+      if(ignored_threshold[j]){
+        //cout << "Skipping " << j << " because of ignored threshold" << endl;
+        continue;}
 
       // find the maximum score for the candidates and get idx of respective detection
       double overlap = boxoverlap(det[j].box, gt[i].box);
-
       // for computing recall thresholds, the candidate with highest score is considered
       if(!compute_fp && overlap>MIN_OVERLAP[current_class] && det[j].thresh>valid_detection){
         det_idx         = j;
@@ -431,6 +438,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
   // if FP are requested, consider stuff area
   if(compute_fp){
 
+    cout << "\tcomputeStatistics: Computing fp line 410" << endl;
     // count fp
     for(int32_t i=0; i<det.size(); i++){
 
@@ -455,6 +463,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
         // compute overlap and assign to stuff area, if overlap exceeds class specific value
         double overlap = boxoverlap(det[j].box, dc[i].box, 0);
         if(overlap>MIN_OVERLAP[current_class]){
+          cout << "\t Overlap: " << overlap << endl;
           assigned_detection[j] = true;
           nstuff++;
         }
@@ -486,56 +495,62 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
         stat.similarity = -1;
     }
   }
+  cout << "\tCall to computeStatistics finished" << endl;
+  cout << "\tStat values: " <<endl;
+  cout << "\t\t stat FN: " << stat.fn << endl;
+  cout << "\t\t stat TP: " << stat.tp << endl;
+  cout << "\t\t stat similarity: " << stat.similarity << endl;
   return stat;
 }
 
 /*=======================================================================
 EVALUATE CLASS-WISE
 =======================================================================*/
-
+// TODO: Change the variable N_TESTIMAGES to the correct number for bdd100k
 bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector< vector<tGroundtruth> > &groundtruth,const vector< vector<tDetection> > &detections, bool compute_aos, vector<double> &precision, vector<double> &aos, DIFFICULTY difficulty) {
-
+  std::cout << "Evaluating class --  (KittiObjective)" << std::endl;
   // init
   int32_t n_gt=0;                                     // total no. of gt (denominator of recall)
   vector<double> v, thresholds;                       // detection scores, evaluated for recall discretization
   vector< vector<int32_t> > ignored_gt, ignored_det;  // index of ignored gt detection for current class/difficulty
   vector< vector<tGroundtruth> > dontcare;            // index of dontcare areas, included in ground truth
-
+  cout << "\tIterating through all test images () " << N_TESTIMAGES << " test images" << endl;
   // for all test images do
-  for (int32_t i=0; i<detections.size(); i++){
-
+  for (int32_t i=0; i<N_TESTIMAGES; i++){
+   
     // holds ignored ground truth, ignored detections and dontcare areas for current frame
     vector<int32_t> i_gt, i_det;
     vector<tGroundtruth> dc;
 
     // only evaluate objects of current class and ignore occluded, truncated objects
     cleanData(current_class, groundtruth[i], detections[i], i_gt, dc, i_det, n_gt, difficulty);
+    
     ignored_gt.push_back(i_gt);
     ignored_det.push_back(i_det);
     dontcare.push_back(dc);
-
     // compute statistics to get recall values
     tPrData pr_tmp = tPrData();
-    pr_tmp = computeStatistics(current_class, groundtruth[i], detections[i], dc, i_gt, i_det, false);
-
+    // FIXME: computeStatistics returns pr_tmp with v-variable of length 0
+    pr_tmp = computeStatistics(current_class, groundtruth[i], detections[i], dc, i_gt, i_det, true);
     // add detection scores to vector over all images
     for(int32_t j=0; j<pr_tmp.v.size(); j++)
       v.push_back(pr_tmp.v[j]);
   }
-
   // get scores that must be evaluated for recall discretization
   thresholds = getThresholds(v, n_gt);
-
+  cout << "Successfully called getThresholds" << endl;
   // compute TP,FP,FN for relevant scores
   vector<tPrData> pr;
   pr.assign(thresholds.size(),tPrData());
-  for (int32_t i=0; i<detections.size(); i++){
+  // FIXME: This should iterate over all images in dir
+  cout << "eval_class(): Iterating over all " << N_TESTIMAGES << " testimages" << endl;
+  for (int32_t i=0; i<N_TESTIMAGES; i++){
 
     // for all scores/recall thresholds do:
     for(int32_t t=0; t<thresholds.size(); t++){
       tPrData tmp = tPrData();
       tmp = computeStatistics(current_class, groundtruth[i], detections[i], dontcare[i],
-                              ignored_gt[i], ignored_det[i], true, compute_aos, thresholds[t], t==38);
+                              ignored_gt[i], ignored_det[i], true, compute_aos, thresholds[t], t==38); // TODO: Find out why the fuck this is called with t==38
 
       // add no. of TP, FP, FN, AOS for current frame to total evaluation for current threshold
       pr[t].tp += tmp.tp;
@@ -552,32 +567,39 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
   if(compute_aos)
     aos.assign(N_SAMPLE_PTS, 0);
   double r=0;
+  cout << "Size of thresholds in eval_class: " << thresholds.size() << endl;
   for (int32_t i=0; i<thresholds.size(); i++){
     r = pr[i].tp/(double)(pr[i].tp + pr[i].fn);
     recall.push_back(r);
     precision[i] = pr[i].tp/(double)(pr[i].tp + pr[i].fp);
+    cout << "Calculating precision: " << "TP, FP, Recall, Precision: " << pr[i].tp << ", " << pr[i].fp << ", " << r << ", " << precision[i] << endl;
     if(compute_aos)
       aos[i] = pr[i].similarity/(double)(pr[i].tp + pr[i].fp);
   }
+  cout << "Sucessfully computed recall, precision and AOS" << endl;
 
   // filter precision and AOS using max_{i..end}(precision)
   for (int32_t i=0; i<thresholds.size(); i++){
     precision[i] = *max_element(precision.begin()+i, precision.end());
+    cout << "eval_class(): Calculating precision["<<i<<"] to be " << precision[i] << endl;
     if(compute_aos)
       aos[i] = *max_element(aos.begin()+i, aos.end());
   }
+  cout << "Sucessfully filtered precision and AOS" << endl;
 
   // save statisics and finish with success
   saveStats(precision, aos, fp_det, fp_ori);
+  cout << "Sucessfully called saveStats" << endl;
 	return true;
 }
 
 void saveAndPlotPlots(string dir_name,string file_name,string obj_type,vector<double> vals[],bool is_aos){
-
+  cout << "Save and Plot Plots called" << endl;
   char command[1024];
 
   // save plot data to file
   FILE *fp = fopen((dir_name + "/" + file_name + ".txt").c_str(),"w");
+  cout << "Saving plot to file " << dir_name + "/" + file_name + ".txt" << endl;
   for (int32_t i=0; i<(int)N_SAMPLE_PTS; i++)
     fprintf(fp,"%f %f %f %f\n",(double)i/(N_SAMPLE_PTS-1.0),vals[0][i],vals[1][i],vals[2][i]);
   fclose(fp);
@@ -641,54 +663,18 @@ inline bool exists_test0 (const std::string& name) {
 #include <fstream>
 #include <experimental/filesystem>
 
-bool has_suffix(const std::string &str, const std::string &suffix){
-  return str.size() >= suffix.size() &&
-         str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+bool has_suffix(const std::string &str, const std::string &suffix)
+{
+    return str.size() >= suffix.size() &&
+           str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
-void load_gt_and_det(string path, string result_dir, string gt_dir, vector<vector<tGroundtruth>> &groundtruth, vector<vector<tDetection>> &detections,  bool &eval_car, bool &eval_pedestrian, bool &eval_cyclist, bool &compute_aos){
-  // for all images read groundtruth and detections
+bool eval(string path, string path_to_gt){
   // Get all filenames from gt
   // This is necessary since KittiBox only uses numbers as filenames, but we have IDs
   namespace fs = std::experimental::filesystem;
-  cout << "Loading detections..." << endl;
-  // Iterate through all files, loading detections and groundtruths. 
-  for (auto &file_path : fs::directory_iterator(path))
-  {
-    // file name
-    string full_file_name = file_path.path().string();
-    // Since the file names are given as absolute paths, we need to find the last folder separator and ignore everything before this.
-    string file_name(full_file_name.substr(full_file_name.rfind("/") + 1));
-    cout << "\tload_gt_and_det: reading file " << file_name << endl;
-    if (!exists_test0(result_dir + "/" + file_name) || !has_suffix(file_name, ".txt") || has_suffix(file_name, "orientation.txt") || has_suffix(file_name, "detection.txt"))
-    {
-      cout << "\t" << result_dir + "/" + file_name << " does not exist or does not contain detections - skipping" << endl;
-      continue;
-    }
-
-    // read ground truth and result poses
-    bool gt_success, det_success;
-    cout << "\t eval(): Trying to load ground truths from " << gt_dir + "/" + file_name << endl;
-    vector<tGroundtruth> gt = loadGroundtruth(gt_dir + "/" + file_name, gt_success);
-    cout << "\t eval(): Trying to load detections from " << result_dir + "/" + file_name << endl;
-    vector<tDetection>   det  = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_pedestrian, eval_cyclist, det_success);
-    groundtruth.push_back(gt);
-    detections.push_back(det);
-
-    // check for errors
-    if (!gt_success){
-      cout << "eval(): ERROR: Couldn't read:" << file_name << " of ground truth (loadGroundTruth)." << endl;
-    }
-    if (!det_success){
-      cout << "eval(): ERROR: Couldn't read:" << file_name << " of detections (loadDetections) " << endl;
-    }
-  }
-  cout << "Size of gts and detections after loading: " << groundtruth.size() << ", " << detections.size() << endl;
-}
-
-bool eval(string path, string path_to_gt, Mail* mail){
-
   // set some global parameters
+  cout << "Initializing global variables ... " << endl;
   initGlobals();
 
   // ground truth and result directories
@@ -698,7 +684,7 @@ bool eval(string path, string path_to_gt, Mail* mail){
 
   // create output directories
   system(("mkdir " + plot_dir).c_str());
-
+  cout << "Output directories creates (mkdir " << plot_dir << ")" << endl;
   // hold detections and ground truth in memory
   vector< vector<tGroundtruth> > groundtruth;
   vector< vector<tDetection> >   detections;
@@ -706,26 +692,66 @@ bool eval(string path, string path_to_gt, Mail* mail){
   // holds wether orientation similarity shall be computed (might be set to false while loading detections)
   // and which labels where provided by this submission
   bool compute_aos=false, eval_car=true, eval_pedestrian=false, eval_cyclist=false;
-  load_gt_and_det(path, result_dir, gt_dir, groundtruth, detections, eval_car, eval_pedestrian, eval_cyclist, compute_aos);
 
+  // for all images read groundtruth and detections
+  cout << "Loading detections..." << endl;
+  
+  for(auto &file_path : fs::directory_iterator(path)){
+    //N_MAXIMAGES++;
+    //N_TESTIMAGES++;
+    //cout << "\t Loading detection no " << i << endl;
+    // file name
+    string full_file_name = file_path.path().string();
+    // Since the file names are given as absolute paths, we need to find the last folder separator and ignore everything before this.
+    string file_name(full_file_name.substr(full_file_name.rfind("/") + 1));
+    if(!exists_test0(result_dir + "/" + file_name) || ! has_suffix(file_name, ".txt") || has_suffix(file_name, "orientation.txt") || has_suffix(file_name, "detection.txt")) {
+      cout << "\t" << result_dir + "/" + file_name << " does not exist - skipping" << endl;
+      continue;
+    }
+
+    
+    // read ground truth and result poses
+    bool gt_success,det_success;
+    cout << "\t eval(): Trying to load ground truths from " << gt_dir + "/" + file_name << endl;
+    cout << "\t eval(): Trying to load detections from " << result_dir + "/" + file_name << endl;
+    vector<tGroundtruth> gt   = loadGroundtruth(gt_dir + "/" + file_name,gt_success);
+    vector<tDetection>   det  = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_pedestrian, eval_cyclist,det_success);
+    groundtruth.push_back(gt);
+    detections.push_back(det);
+
+    // check for errors
+    if (!gt_success) {
+      cout << "eval(): ERROR: Couldn't read:" << file_name << " of ground truth (loadGroundTruth)." << endl;
+      return false;
+    }
+    if (!det_success) {
+      cout << "eval(): ERROR: Couldn't read:" << file_name << " of detections (loadDetections) " << endl;
+      return false;
+    }
+  }
+  cout << "Done. " << endl;
 
   // holds pointers for result files
   FILE *fp_det=0, *fp_ori=0;
 
   // eval cars
   if(eval_car){
+    cout << "Evaluating cars..." << endl;
+    cout << "fp_det:  " << result_dir + "/stats_" + CLASS_NAMES[CAR] + "_detection.txt" << endl;
     fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[CAR] + "_detection.txt").c_str(),"w");
     if(compute_aos)
+      cout << "fp_ori: " << result_dir + "/stats_" + CLASS_NAMES[CAR] + "_orientation.txt" << endl;
       fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[CAR] + "_orientation.txt").c_str(),"w");
     vector<double> precision[3], aos[3];
     if(   !eval_class(fp_det,fp_ori,CAR,groundtruth,detections,compute_aos,precision[0],aos[0],EASY)
        || !eval_class(fp_det,fp_ori,CAR,groundtruth,detections,compute_aos,precision[1],aos[1],MODERATE)
        || !eval_class(fp_det,fp_ori,CAR,groundtruth,detections,compute_aos,precision[2],aos[2],HARD)){
-      mail->msg("Car evaluation failed.");
+      cout << "Car evaluation failed." << endl;
       return false;
     }
     fclose(fp_det);
     saveAndPlotPlots(plot_dir,CLASS_NAMES[CAR] + "_detection",CLASS_NAMES[CAR],precision,0);
+    cout << "Saved car plots successfully " << endl;
     if(compute_aos){
       saveAndPlotPlots(plot_dir,CLASS_NAMES[CAR] + "_orientation",CLASS_NAMES[CAR],aos,1);
       fclose(fp_ori);
@@ -734,6 +760,7 @@ bool eval(string path, string path_to_gt, Mail* mail){
 
   // eval pedestrians
   if(eval_pedestrian){
+    cout << "Evaluating pedestrians..." << endl;
     fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[PEDESTRIAN] + "_detection.txt").c_str(),"w");
     if(compute_aos)
       fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[PEDESTRIAN] + "_orientation.txt").c_str(),"w");
@@ -741,11 +768,12 @@ bool eval(string path, string path_to_gt, Mail* mail){
     if(   !eval_class(fp_det,fp_ori,PEDESTRIAN,groundtruth,detections,compute_aos,precision[0],aos[0],EASY)
        || !eval_class(fp_det,fp_ori,PEDESTRIAN,groundtruth,detections,compute_aos,precision[1],aos[1],MODERATE)
        || !eval_class(fp_det,fp_ori,PEDESTRIAN,groundtruth,detections,compute_aos,precision[2],aos[2],HARD)){
-      mail->msg("Pedestrian evaluation failed.");
+      cout << "Pedestrian evaluation failed." << endl;
       return false;
     }
     fclose(fp_det);
     saveAndPlotPlots(plot_dir,CLASS_NAMES[PEDESTRIAN] + "_detection",CLASS_NAMES[PEDESTRIAN],precision,0);
+    cout << "Finished saving plots with pedestrians" << endl;
     if(compute_aos){
       fclose(fp_ori);
       saveAndPlotPlots(plot_dir,CLASS_NAMES[PEDESTRIAN] + "_orientation",CLASS_NAMES[PEDESTRIAN],aos,1);
@@ -754,6 +782,7 @@ bool eval(string path, string path_to_gt, Mail* mail){
 
   // eval cyclists
   if(eval_cyclist){
+    cout << "Evaluating cyclists..." << endl;
     fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[CYCLIST]  + "_detection.txt").c_str(),"w");
     if(compute_aos)
       fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[CYCLIST] + "_orientation.txt").c_str(),"w");
@@ -761,16 +790,19 @@ bool eval(string path, string path_to_gt, Mail* mail){
     if(   !eval_class(fp_det,fp_ori,CYCLIST,groundtruth,detections,compute_aos,precision[0],aos[0],EASY)
        || !eval_class(fp_det,fp_ori,CYCLIST,groundtruth,detections,compute_aos,precision[1],aos[1],MODERATE)
        || !eval_class(fp_det,fp_ori,CYCLIST,groundtruth,detections,compute_aos,precision[2],aos[2],HARD)){
-      mail->msg("Cyclist evaluation failed.");
+      cout << "Cyclist evaluation failed." << endl;
       return false;
     }
     fclose(fp_det);
     saveAndPlotPlots(plot_dir,CLASS_NAMES[CYCLIST] + "_detection",CLASS_NAMES[CYCLIST],precision,0);
+    cout << "Finished saving plots with cyclists" << endl;
     if(compute_aos){
       fclose(fp_ori);
       saveAndPlotPlots(plot_dir,CLASS_NAMES[CYCLIST] + "_orientation",CLASS_NAMES[CYCLIST],aos,1);
     }
   }
+  
+  // TODO: Add evaluation for all classes in bdd100k here
 
   // success
   return true;
@@ -784,33 +816,30 @@ int32_t main (int32_t argc,char *argv[]) {
     cout << "ARGC: " << argc;
     return 1;
   }
-
-
+  cout << "************************************************** ENTERING CPP EVAL CODE *******************";
+  cout << "*********************************************************************************************";
+  cout << "*********************************************************************************************"<<endl;
+  cerr << "TESTING TESTING TESTING TESTING CERR " << endl;
+  cout << "Running main of cpp evaluation" << endl;
   // read arguments
+  cout << "Reading arguments" << endl;
   string path_to_prediction = argv[1];
   string path_to_gt = argv[2];
-
+  cout << "Path to prediction: " << path_to_prediction << endl;
+  cout << "Path to ground truths: " << path_to_gt << endl;
   // init notification mail
-  Mail *mail;
-  if (argc==4) mail = new Mail(argv[3]);
-  else         mail = new Mail();
-  mail->msg("Thank you for participating in our evaluation!");
-  mail->msg("Starting to evaluate Results found in: %s",
-             path_to_prediction.c_str());
-
+  cout << "Starting to evaluate results - found in " << path_to_prediction.c_str() << endl;
   // run evaluation
-  if (eval(path_to_prediction,path_to_gt,mail)) {
-    mail->msg("Evaluation Succesfull. Results can be found:");
-    mail->msg("%s /results  ", path_to_prediction.c_str());
-    delete mail;
+  if (eval(path_to_prediction, path_to_gt)) {
+    cout << "CPP EVAL: Evaluation sucessful! " << endl;
+    cout << "***************************************************** EXITING CPP EVAL CODE *******************" << endl;
     return 0;
   } else {
-    mail->msg("An error occured while processing your results.");
-    mail->msg("Please make sure that the data in your zip archive has the right format!");
+    cout << "CPP EVAL: An error occured while processing your results." << endl;
+    cout << "***************************************************** EXITING CPP EVAL CODE *******************" << endl;
     return 1;
   }
 
-  // send mail and exit
-
   return 0;
 }
+
