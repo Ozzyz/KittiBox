@@ -14,11 +14,11 @@
         "label_dir": "bdd100k/kitti_labels"
     },
     "logging": {
-        "display_iter": 2,
-        "eval_iter": 5,
-        "write_iter": 5,
-        "save_iter": 5,
-        "image_iter": 5
+        "display_iter": 200,
+        "eval_iter": 200,
+        "write_iter": 200,
+        "save_iter": 200,
+        "image_iter": 200
     },
     "arch": {
         "deep_feat": "pool5"
@@ -48,7 +48,7 @@
     "image_width": 1248, 
     "grid_width": 39,
     "grid_height": 12,
-    "batch_size": 1, 
+    "batch_size": 2, 
     "tau": 0.35,
     "scale_down": 0.1,
     "focus_size": 1.8,

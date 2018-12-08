@@ -18,10 +18,6 @@ using namespace std;
 STATIC EVALUATION PARAMETERS
 =======================================================================*/
 
-// holds the number of test images on the server
-const int32_t N_MAXIMAGES = 7518;
-const int32_t N_TESTIMAGES = 481;
-
 // easy, moderate and hard evaluation level
 enum DIFFICULTY{EASY=0, MODERATE=1, HARD=2};
 
@@ -43,8 +39,8 @@ const double N_SAMPLE_PTS = 41;
 // initialize class names
 void initGlobals () {
   CLASS_NAMES.push_back("car");
-  CLASS_NAMES.push_back("person");
-  CLASS_NAMES.push_back("bike");
+  CLASS_NAMES.push_back("pedestrian");
+  CLASS_NAMES.push_back("cyclist");
 }
 
 /*=======================================================================
@@ -777,6 +773,7 @@ bool eval(string path, string path_to_gt, Mail* mail){
 }
 
 int32_t main (int32_t argc,char *argv[]) {
+  cout << "**********ENTERING CPP CODE***************" << endl;
 
   // we need 2 or 4 arguments!
   if (argc!=3 && argc!=4) {
@@ -803,6 +800,7 @@ int32_t main (int32_t argc,char *argv[]) {
     mail->msg("Evaluation Succesfull. Results can be found:");
     mail->msg("%s /results  ", path_to_prediction.c_str());
     delete mail;
+    cout << "***************** EXITING CPP CODE ***************" << endl;
     return 0;
   } else {
     mail->msg("An error occured while processing your results.");

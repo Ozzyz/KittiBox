@@ -182,8 +182,8 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
     #logging.info("bdd_eval: Trying to read files {}".format(files)) 
     for i, file in enumerate(files):
         image_file = file.split(" ")[0]
-        if not validation and random.random() > 0.2:
-            continue
+        #if not validation and random.random() > 0.2:
+        #    continue
         
         image_file = os.path.join(base_path, image_file)
         orig_img = scp.misc.imread(image_file)[:, :, :3]
