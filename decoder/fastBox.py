@@ -473,7 +473,7 @@ def evaluation(hyp, images, labels, decoded_logits, losses, global_step):
             plot_image = data_utils.draw_encoded(
                 np_img[0], np_confidences[0], mask=np_mask[0], cell_size=32)
 
-        num_images = 100
+        num_images = 10
 
         filename = '%s_%s.jpg' % \
             ((np_global_step // hyp['logging']['write_iter'])

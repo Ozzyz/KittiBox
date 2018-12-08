@@ -17,10 +17,6 @@ using namespace std;
 STATIC EVALUATION PARAMETERS
 =======================================================================*/
 
-// holds the number of test images on the server
-// FIXME: Change this to be the number of test images of bdd100k
-int32_t N_MAXIMAGES = 50;
-int32_t N_TESTIMAGES = 50;
 // easy, moderate and hard evaluation level
 enum DIFFICULTY
 {
@@ -569,10 +565,9 @@ bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<
   vector<double> v, thresholds;                    // detection scores, evaluated for recall discretization
   vector<vector<int32_t>> ignored_gt, ignored_det; // index of ignored gt detection for current class/difficulty
   vector<vector<tGroundtruth>> dontcare;           // index of dontcare areas, included in ground truth
-  cout << "\t\tIterating through all test images () " << N_TESTIMAGES << " test images" << endl;
   cout << "\t\tSize of gts and detections: " << groundtruth.size() << ", " << detections.size() << endl;
   // for all test images do
-  for (int32_t i = 0; i < N_TESTIMAGES; i++)
+  for (int32_t i = 0; i < detections.size(); i++)
   {
     if(groundtruth[i].size() > 1000 || detections[i].size() > 1000){
         continue; // TODO: Check if this is necessary 
@@ -605,7 +600,7 @@ bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<
   vector<tPrData> pr;
   pr.assign(thresholds.size(), tPrData());
 
-  for (int32_t i = 0; i < N_TESTIMAGES; i++)
+  for (int32_t i = 0; i < detections.size(); i++)
   {
 
     // for all scores/recall thresholds do:
@@ -667,6 +662,76 @@ inline bool exists_test0(const std::string &name)
   return (access(name.c_str(), F_OK) != -1);
 }
 
+void saveAndPlotPlots(string dir_name, string file_name, string obj_type, vector<double> vals[], bool is_aos)
+{
+  char command[1024];
+
+  // save plot data to file
+  cout << "\t SaveAndPlotPlots: Writing file" << dir_name + "/" + file_name + ".txt" << endl;
+  FILE *fp = fopen((dir_name + "/" + file_name + ".txt").c_str(), "w");
+  cout << "Saving plot to file " << dir_name + "/" + file_name + ".txt" << endl;
+  for (int32_t i = 0; i < (int)N_SAMPLE_PTS; i++)
+    fprintf(fp, "%f %f %f %f\n", (double)i / (N_SAMPLE_PTS - 1.0), vals[0][i], vals[1][i], vals[2][i]);
+  fclose(fp);
+
+  // create png + eps
+  for (int32_t j = 0; j < 2; j++)
+  {
+
+    // open file
+    FILE *fp = fopen((dir_name + "/" + file_name + ".gp").c_str(), "w");
+
+    // save gnuplot instructions
+    if (j == 0)
+    {
+      fprintf(fp, "set term png size 450,315 font \"Helvetica\" 11\n");
+      fprintf(fp, "set output \"%s.png\"\n", file_name.c_str());
+    }
+    else
+    {
+      fprintf(fp, "set term postscript eps enhanced color font \"Helvetica\" 20\n");
+      fprintf(fp, "set output \"%s.eps\"\n", file_name.c_str());
+    }
+
+    // set labels and ranges
+    fprintf(fp, "set size ratio 0.7\n");
+    fprintf(fp, "set xrange [0:1]\n");
+    fprintf(fp, "set yrange [0:1]\n");
+    fprintf(fp, "set xlabel \"Recall\"\n");
+    if (!is_aos)
+      fprintf(fp, "set ylabel \"Precision\"\n");
+    else
+      fprintf(fp, "set ylabel \"Orientation Similarity\"\n");
+    obj_type[0] = toupper(obj_type[0]);
+    fprintf(fp, "set title \"%s\"\n", obj_type.c_str());
+
+    // line width
+    int32_t lw = 5;
+    if (j == 0)
+      lw = 3;
+
+    // plot error curve
+    fprintf(fp, "plot ");
+    fprintf(fp, "\"%s.txt\" using 1:2 title 'Easy' with lines ls 1 lw %d,", file_name.c_str(), lw);
+    fprintf(fp, "\"%s.txt\" using 1:3 title 'Moderate' with lines ls 2 lw %d,", file_name.c_str(), lw);
+    fprintf(fp, "\"%s.txt\" using 1:4 title 'Hard' with lines ls 3 lw %d", file_name.c_str(), lw);
+
+    // close file
+    fclose(fp);
+
+    // run gnuplot => create png + eps
+    sprintf(command, "cd %s; gnuplot %s", dir_name.c_str(), (file_name + ".gp").c_str());
+    system(command);
+  }
+
+  // create pdf and crop
+  sprintf(command, "cd %s; ps2pdf %s.eps %s_large.pdf", dir_name.c_str(), file_name.c_str(), file_name.c_str());
+  system(command);
+  sprintf(command, "cd %s; pdfcrop %s_large.pdf %s.pdf", dir_name.c_str(), file_name.c_str(), file_name.c_str());
+  system(command);
+  sprintf(command, "cd %s; rm %s_large.pdf", dir_name.c_str(), file_name.c_str());
+  system(command);
+}
 
 int32_t eval_class_and_plot(bool do_eval_class, CLASSES CLASS_TYPE, string result_dir, string plot_dir, vector<vector<tGroundtruth>> &groundtruth, vector<vector<tDetection>> &detections, bool compute_aos)
 {
@@ -696,12 +761,12 @@ int32_t eval_class_and_plot(bool do_eval_class, CLASSES CLASS_TYPE, string resul
       cout << CLASS_NAMES[CLASS_TYPE] << " successfully evaluated" << endl;
     }
     fclose(fp_det);
-    //saveAndPlotPlots(plot_dir, CLASS_NAMES[CLASS_TYPE] + "_detection", CLASS_NAMES[CLASS_TYPE], precision, 0);
-    //cout << "\tFinished saving plots with class type " << CLASS_NAMES[CLASS_TYPE] << endl;
+    saveAndPlotPlots(plot_dir, CLASS_NAMES[CLASS_TYPE] + "_detection", CLASS_NAMES[CLASS_TYPE], precision, 0);
+    cout << "\tFinished saving plots with class type " << CLASS_NAMES[CLASS_TYPE] << endl;
     if (compute_aos)
     {
       fclose(fp_ori);
-      //saveAndPlotPlots(plot_dir, CLASS_NAMES[CLASS_TYPE] + "_orientation", CLASS_NAMES[CLASS_TYPE], aos, 1);
+      saveAndPlotPlots(plot_dir, CLASS_NAMES[CLASS_TYPE] + "_orientation", CLASS_NAMES[CLASS_TYPE], aos, 1);
     }
   }else{
     cout << "Eval class and plot called, but class " << CLASS_NAMES[CLASS_TYPE] << " is set to skip. " << endl;
@@ -857,76 +922,4 @@ int32_t main(int32_t argc, char *argv[])
 
 
 
-/*
-void saveAndPlotPlots(string dir_name, string file_name, string obj_type, vector<double> vals[], bool is_aos)
-{
-  //cout << "Save and Plot Plots called" << endl;
-  char command[1024];
 
-  // save plot data to file
-  cout << "\t SaveAndPlotPlots: Writing file" << dir_name + "/" + file_name + ".txt" << endl;
-  FILE *fp = fopen((dir_name + "/" + file_name + ".txt").c_str(), "w");
-  cout << "Saving plot to file " << dir_name + "/" + file_name + ".txt" << endl;
-  for (int32_t i = 0; i < (int)N_SAMPLE_PTS; i++)
-    fprintf(fp, "%f %f %f %f\n", (double)i / (N_SAMPLE_PTS - 1.0), vals[0][i], vals[1][i], vals[2][i]);
-  fclose(fp);
-
-  // create png + eps
-  for (int32_t j = 0; j < 2; j++)
-  {
-
-    // open file
-    FILE *fp = fopen((dir_name + "/" + file_name + ".gp").c_str(), "w");
-
-    // save gnuplot instructions
-    if (j == 0)
-    {
-      fprintf(fp, "set term png size 450,315 font \"Helvetica\" 11\n");
-      fprintf(fp, "set output \"%s.png\"\n", file_name.c_str());
-    }
-    else
-    {
-      fprintf(fp, "set term postscript eps enhanced color font \"Helvetica\" 20\n");
-      fprintf(fp, "set output \"%s.eps\"\n", file_name.c_str());
-    }
-
-    // set labels and ranges
-    fprintf(fp, "set size ratio 0.7\n");
-    fprintf(fp, "set xrange [0:1]\n");
-    fprintf(fp, "set yrange [0:1]\n");
-    fprintf(fp, "set xlabel \"Recall\"\n");
-    if (!is_aos)
-      fprintf(fp, "set ylabel \"Precision\"\n");
-    else
-      fprintf(fp, "set ylabel \"Orientation Similarity\"\n");
-    obj_type[0] = toupper(obj_type[0]);
-    fprintf(fp, "set title \"%s\"\n", obj_type.c_str());
-
-    // line width
-    int32_t lw = 5;
-    if (j == 0)
-      lw = 3;
-
-    // plot error curve
-    fprintf(fp, "plot ");
-    fprintf(fp, "\"%s.txt\" using 1:2 title 'Easy' with lines ls 1 lw %d,", file_name.c_str(), lw);
-    fprintf(fp, "\"%s.txt\" using 1:3 title 'Moderate' with lines ls 2 lw %d,", file_name.c_str(), lw);
-    fprintf(fp, "\"%s.txt\" using 1:4 title 'Hard' with lines ls 3 lw %d", file_name.c_str(), lw);
-
-    // close file
-    fclose(fp);
-
-    // run gnuplot => create png + eps
-    sprintf(command, "cd %s; gnuplot %s", dir_name.c_str(), (file_name + ".gp").c_str());
-    system(command);
-  }
-
-  // create pdf and crop
-  sprintf(command, "cd %s; ps2pdf %s.eps %s_large.pdf", dir_name.c_str(), file_name.c_str(), file_name.c_str());
-  system(command);
-  sprintf(command, "cd %s; pdfcrop %s_large.pdf %s.pdf", dir_name.c_str(), file_name.c_str(), file_name.c_str());
-  system(command);
-  sprintf(command, "cd %s; rm %s_large.pdf", dir_name.c_str(), file_name.c_str());
-  system(command);
-}
-*/

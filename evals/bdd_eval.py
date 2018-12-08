@@ -76,6 +76,7 @@ def write_rects(rects, filename):
             if class_idx is None:
                 logging.warn("Found rect without class id in evals.py")
                 class_idx = 3
+                raise ValueError
             class_str = CLASSES[class_idx - 1]
             string = "%s 0 1 0 %f %f %f %f 0 0 0 0 0 0 0 %f" % \
                 (class_str, rect.x1, rect.y1, rect.x2, rect.y2, rect.score)
@@ -123,7 +124,8 @@ def create_eval_stats(detection_filepath, phase="train"):
         # Skip classes that have no detections
         if not os.path.isfile(res_file):
             logging.warn("There are no detections for class {}".format(class_name))
-            eval_list.append(("{}: {}   {}".format(class_name, phase, mode), 0))
+            for mode in ['easy', 'medium', 'hard']:
+                eval_list.append(("{}: {}   {}".format(class_name, phase, mode), 0))
             continue
         with open(res_file) as f:
             for mode in ['easy', 'medium', 'hard']:
@@ -232,8 +234,6 @@ def run_session(hypes, sess, files, pred_boxes, pred_confidences, image_pl, vali
     image_list = []
     for i, file in enumerate(files):
         image_file = file.split(" ")[0]
-        if not validation and random.random() > 0.2:
-            continue
 
         image_file = os.path.join(base_path, image_file)
         orig_img = scp.misc.imread(image_file)[:, :, :3]
@@ -251,11 +251,10 @@ def run_session(hypes, sess, files, pred_boxes, pred_confidences, image_pl, vali
             use_stitching=True, rnn_len=hypes['rnn_len'],
             min_conf=0.50, tau=hypes['tau'], color_acc=(0, 255, 0))
 
-        if validation and i % 15 == 0:
+        if validation:
             image_name = os.path.basename(image_file)
             image_name = os.path.join(img_dir, image_name)
-            if i % 15 == 0:
-                scp.misc.imsave(image_name, new_img)
+            scp.misc.imsave(image_name, new_img)
  
         if rects:
             logging.info("All rects (bdd_eval): {}".format(rects))

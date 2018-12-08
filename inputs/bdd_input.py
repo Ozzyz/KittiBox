@@ -104,7 +104,7 @@ def _create_bdd_annotations(image_file, gt_image_file):
         "File does not exist: %s" % gt_image_file
 
     rect_list = read_bdd_anno(gt_image_file)
-
+    #logging.info("Reading bdd annotations - created rects {}".format(rect_list))
     anno = AnnoLib.Annotation()
     anno.rects = rect_list
     return anno

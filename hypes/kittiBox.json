@@ -16,9 +16,9 @@
     "logging": {
         "display_iter": 200,
         "eval_iter": 200,
-        "write_iter": 1000,
-        "save_iter": 1000,
-        "image_iter": 1000
+        "write_iter": 250,
+        "save_iter": 250,
+        "image_iter": 250
     },
     "arch": {
         "deep_feat": "pool5"
@@ -28,7 +28,7 @@
         "opt": "Adam",
         "use_jitter": false,
         "rnd_seed": 1,
-        "epsilon": 0.00001, 
+        "epsilon": 1e-5, 
         "learning_rate": 1e-5,
         "learning_rate_step": null, 
         "hungarian_iou": 0.35,
@@ -38,7 +38,7 @@
     },
     "use_rezoom": true,
     "augment_level": 1,
-    "use_mask": false,
+    "use_mask": true,
     "biggest_box_px": 10000,
     "early_feat_channels": 256,
     "rezoom_change_loss": "center",
