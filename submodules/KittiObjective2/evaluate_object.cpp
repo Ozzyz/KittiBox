@@ -67,7 +67,7 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
   /* Loads the detections from the model from the given filename.
      Returns a vector of detections where each element is of type tDetection struct.
    */
-  cout << "Loading detections filename: " << file_name <<  endl;
+  //cout << "Loading detections filename: " << file_name <<  endl;
   // holds all detections (ignored detections are indicated by an index vector
   vector<tDetection> detections;
   FILE *fp = fopen(file_name.c_str(), "r");
@@ -132,7 +132,7 @@ vector<tGroundtruth> loadGroundtruth(string file_name, bool &success)
 
   // holds all ground truth (ignored ground truth is indicated by an index vector
   vector<tGroundtruth> groundtruth;
-  cout << "Loading ground truth, filename: " << file_name << endl;
+  //cout << "Loading ground truth, filename: " << file_name << endl;
   
   FILE *fp = fopen(file_name.c_str(), "r");
   if (!fp)
@@ -294,11 +294,11 @@ void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vect
   /* Iterates through the ground truths (gt) and ignores all ground truths that are too occluded (defined by MAX_OCCLUSION[difficulty], MAX_TRUNCATION and MIN_HEIGHT)
      Then, it creates a vector (ignored_gt) that is 0 on index i if gt[i] should not be ignored. Else, it is ignored.
    */
-  cout << "\t\tClean data called, current class : " << CLASS_NAMES[current_class] << endl;
+  //cout << "\t\tClean data called, current class : " << CLASS_NAMES[current_class] << endl;
   // extract ground truth bounding boxes for current evaluation class
 
   //cout << "\t\tcleanData: Computing TP, FP and FN" << endl;
-  cout << "\t\tsize of gt, det, ignored_gt, dc, ignored_det: " << gt.size() << ", " << det.size() << ", " << ignored_gt.size() << ", " << dc.size() << ", " << ignored_det.size() << endl;
+  //cout << "\t\tsize of gt, det, ignored_gt, dc, ignored_det: " << gt.size() << ", " << det.size() << ", " << ignored_gt.size() << ", " << dc.size() << ", " << ignored_det.size() << endl;
   
   for (int32_t i = 0; i < gt.size(); i++)
   {
@@ -549,7 +549,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
     }
   }
   //cout << "\tCall to computeStatistics finished" << endl;
-  cout << "\tStat values: (FN, TP, similarity): " << stat.fn << ", " << stat.tp << ", " << stat.similarity <<  endl;
+  //cout << "\tStat values: (FN, TP, similarity): " << stat.fn << ", " << stat.tp << ", " << stat.similarity <<  endl;
   return stat;
 }
 
@@ -559,13 +559,13 @@ EVALUATE CLASS-WISE
 // TODO: Change the variable N_TESTIMAGES to the correct number for bdd100k
 bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<vector<tGroundtruth>> &groundtruth, const vector<vector<tDetection>> &detections, bool compute_aos, vector<double> &precision, vector<double> &aos, DIFFICULTY difficulty)
 {
-  cout << "\t\tEntering eval class - class: " << CLASS_NAMES[current_class] << endl;
+  //cout << "\t\tEntering eval class - class: " << CLASS_NAMES[current_class] << endl;
   // init
   int32_t n_gt = 0;                                // total no. of gt (denominator of recall)
   vector<double> v, thresholds;                    // detection scores, evaluated for recall discretization
   vector<vector<int32_t>> ignored_gt, ignored_det; // index of ignored gt detection for current class/difficulty
   vector<vector<tGroundtruth>> dontcare;           // index of dontcare areas, included in ground truth
-  cout << "\t\tSize of gts and detections: " << groundtruth.size() << ", " << detections.size() << endl;
+  //cout << "\t\tSize of gts and detections: " << groundtruth.size() << ", " << detections.size() << endl;
   // for all test images do
   for (int32_t i = 0; i < detections.size(); i++)
   {
@@ -585,17 +585,17 @@ bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<
     // compute statistics to get recall values
     tPrData pr_tmp = tPrData();
     pr_tmp = computeStatistics(current_class, groundtruth[i], detections[i], dc, i_gt, i_det, false);
-    cout << "\t\tCall to computestatistics returned" << endl;
+    //cout << "\t\tCall to computestatistics returned" << endl;
     // add detection scores to vector over all images
     for (int32_t j = 0; j < pr_tmp.v.size(); j++){
       v.push_back(pr_tmp.v[j]);
     }
-    cout << "\t\t\tFinished pushing back tmp vector scores" << endl;
+    //cout << "\t\t\tFinished pushing back tmp vector scores" << endl;
   }
-  cout << "\t\t Getting thresholds for recall discretiozation" << endl;
+  //cout << "\t\t Getting thresholds for recall discretiozation" << endl;
   // get scores that must be evaluated for recall discretization
   thresholds = getThresholds(v, n_gt);
-  cout << "\t\tFinished call to getthresholds" << endl;
+  //cout << "\t\tFinished call to getthresholds" << endl;
   // compute TP,FP,FN for relevant scores
   vector<tPrData> pr;
   pr.assign(thresholds.size(), tPrData());
@@ -620,13 +620,13 @@ bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<
   }
 
   // compute recall, precision and AOS
-  cout << "\t\t Computing recall, precision and AOS " << endl;
+  //cout << "\t\t Computing recall, precision and AOS " << endl;
   vector<double> recall;
   precision.assign(N_SAMPLE_PTS, 0);
   if (compute_aos)
     aos.assign(N_SAMPLE_PTS, 0);
   double r = 0;
-  cout << "\t\tSize of thresholds in eval_class: " << thresholds.size() << endl;
+  //cout << "\t\tSize of thresholds in eval_class: " << thresholds.size() << endl;
   for (int32_t i = 0; i < thresholds.size(); i++)
   {
     r = pr[i].tp / (double)(pr[i].tp + pr[i].fn);
@@ -647,12 +647,12 @@ bool eval_class(FILE *fp_det, FILE *fp_ori, CLASSES current_class, const vector<
     if (compute_aos)
       aos[i] = *max_element(aos.begin() + i, aos.end());
   }
-  cout << "\tSucessfully filtered precision and AOS" << endl;
+  //cout << "\tSucessfully filtered precision and AOS" << endl;
 
   // save statisics and finish with success
   saveStats(precision, aos, fp_det, fp_ori);
-  cout << "\tSucessfully called saveStats" << endl;
-  cout << "\tFinished call to eval_class for class " << CLASS_NAMES[current_class] << endl;
+  //cout << "\tSucessfully called saveStats" << endl;
+  //cout << "\tFinished call to eval_class for class " << CLASS_NAMES[current_class] << endl;
   return true;
 }
 
@@ -667,9 +667,9 @@ void saveAndPlotPlots(string dir_name, string file_name, string obj_type, vector
   char command[1024];
 
   // save plot data to file
-  cout << "\t SaveAndPlotPlots: Writing file" << dir_name + "/" + file_name + ".txt" << endl;
+  //cout << "\t SaveAndPlotPlots: Writing file" << dir_name + "/" + file_name + ".txt" << endl;
   FILE *fp = fopen((dir_name + "/" + file_name + ".txt").c_str(), "w");
-  cout << "Saving plot to file " << dir_name + "/" + file_name + ".txt" << endl;
+  //cout << "Saving plot to file " << dir_name + "/" + file_name + ".txt" << endl;
   for (int32_t i = 0; i < (int)N_SAMPLE_PTS; i++)
     fprintf(fp, "%f %f %f %f\n", (double)i / (N_SAMPLE_PTS - 1.0), vals[0][i], vals[1][i], vals[2][i]);
   fclose(fp);
@@ -740,18 +740,18 @@ int32_t eval_class_and_plot(bool do_eval_class, CLASSES CLASS_TYPE, string resul
   // eval traffic lights
   // holds pointers for result files
   FILE *fp_det = 0, *fp_ori = 0;
-  cout << "\tEntering eval_class_and_plot - class: " << CLASS_NAMES[CLASS_TYPE] << " do evaluation? : " << do_eval_class <<  endl;
-  cout << "\tSize of ground truths and detections " << groundtruth.size() << ", " << detections.size() << endl;
+  //cout << "\tEntering eval_class_and_plot - class: " << CLASS_NAMES[CLASS_TYPE] << " do evaluation? : " << do_eval_class <<  endl;
+  //cout << "\tSize of ground truths and detections " << groundtruth.size() << ", " << detections.size() << endl;
   if (do_eval_class){
-    cout << "\tEvaluating class " << CLASS_NAMES[CLASS_TYPE] << endl;
-    cout << "\tResult file will be in directory " << result_dir << endl;
+    //cout << "\tEvaluating class " << CLASS_NAMES[CLASS_TYPE] << endl;
+    //cout << "\tResult file will be in directory " << result_dir << endl;
    
     fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[CLASS_TYPE] + "_detection.txt").c_str(), "w");
-    cout << "\tSuccessfully opened file " << result_dir + "/stats_" + CLASS_NAMES[CLASS_TYPE] + "_detection.txt" << endl;
+    //cout << "\tSuccessfully opened file " << result_dir + "/stats_" + CLASS_NAMES[CLASS_TYPE] + "_detection.txt" << endl;
     if (compute_aos)
       fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[CLASS_TYPE] + "_orientation.txt").c_str(), "w");
     vector<double> precision[3], aos[3];
-    cout << "\tAbout to call eval class for class " << CLASS_NAMES[CLASS_TYPE] << endl;
+    //cout << "\tAbout to call eval class for class " << CLASS_NAMES[CLASS_TYPE] << endl;
     if (!eval_class(fp_det, fp_ori, CLASS_TYPE, groundtruth, detections, compute_aos, precision[0], aos[0], EASY) ||
         !eval_class(fp_det, fp_ori, CLASS_TYPE, groundtruth, detections, compute_aos, precision[1], aos[1], MODERATE) ||
         !eval_class(fp_det, fp_ori, CLASS_TYPE, groundtruth, detections, compute_aos, precision[2], aos[2], HARD)){
@@ -762,7 +762,7 @@ int32_t eval_class_and_plot(bool do_eval_class, CLASSES CLASS_TYPE, string resul
     }
     fclose(fp_det);
     saveAndPlotPlots(plot_dir, CLASS_NAMES[CLASS_TYPE] + "_detection", CLASS_NAMES[CLASS_TYPE], precision, 0);
-    cout << "\tFinished saving plots with class type " << CLASS_NAMES[CLASS_TYPE] << endl;
+    //cout << "\tFinished saving plots with class type " << CLASS_NAMES[CLASS_TYPE] << endl;
     if (compute_aos)
     {
       fclose(fp_ori);
@@ -793,7 +793,7 @@ void load_gt_and_det(string path, string result_dir, string gt_dir, vector<vecto
     string full_file_name = file_path.path().string();
     // Since the file names are given as absolute paths, we need to find the last folder separator and ignore everything before this.
     string file_name(full_file_name.substr(full_file_name.rfind("/") + 1));
-    cout << "\tload_gt_and_det: reading file " << file_name << endl;
+    //cout << "\tload_gt_and_det: reading file " << file_name << endl;
     if (!exists_test0(result_dir + "/" + file_name) || !has_suffix(file_name, ".txt") || has_suffix(file_name, "orientation.txt") || has_suffix(file_name, "detection.txt"))
     {
       cout << "\t" << result_dir + "/" + file_name << " does not exist or does not contain detections - skipping" << endl;
@@ -802,9 +802,9 @@ void load_gt_and_det(string path, string result_dir, string gt_dir, vector<vecto
 
     // read ground truth and result poses
     bool gt_success, det_success;
-    cout << "\t eval(): Trying to load ground truths from " << gt_dir + "/" + file_name << endl;
+    //cout << "\t eval(): Trying to load ground truths from " << gt_dir + "/" + file_name << endl;
     vector<tGroundtruth> gt = loadGroundtruth(gt_dir + "/" + file_name, gt_success);
-    cout << "\t eval(): Trying to load detections from " << result_dir + "/" + file_name << endl;
+    //cout << "\t eval(): Trying to load detections from " << result_dir + "/" + file_name << endl;
     vector<tDetection> det = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_person, eval_bike, eval_trafficlight, eval_trafficsign, eval_truck, det_success);
     groundtruth.push_back(gt);
     detections.push_back(det);

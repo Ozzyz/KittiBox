@@ -82,8 +82,8 @@ def write_rects(rects, filename):
                 (class_str, rect.x1, rect.y1, rect.x2, rect.y2, rect.score)
             print(string, file=f)
             out_str.append(string)
-    if out_str:
-        logging.info("Writing ***** \n {} \n ****** to file {}\n".format("\n".join(out_str), filename))
+    #if out_str:
+    #    logging.info("Writing ***** \n {} \n ****** to file {}\n".format("\n".join(out_str), filename))
 
 
 def draw_rects(image, rects, color=(255, 192, 203)):

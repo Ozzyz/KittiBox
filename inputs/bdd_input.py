@@ -185,6 +185,7 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
                                             hypes["rnn_len"])
             # BDD100K does not contain any 'DontCare' areas
             mask_list = [rect for rect in anno.rects if rect.classID == -1]
+            assert len(mask_list) == 0, "Error - if evaluating on bdd100k, we dont have dontcare areas"
             mask = _generate_mask(hypes, mask_list)
             grid_width = hypes["grid_width"]
             grid_height = hypes["grid_height"]
@@ -192,7 +193,7 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
 
             boxes = boxes.reshape([grid_height,
                                    grid_width, 4])
-            confs = confs.reshape(grid_height, grid_width)
+            confs = confs.reshape(grid_height, grid_width, hypes['num_classes'])
 
             yield {"image": im, "boxes": boxes, "confs": confs,
                    "rects": pos_list, "mask": mask}
@@ -274,9 +275,9 @@ def create_queues(hypes, phase):
     dtypes = [tf.float32, tf.float32, tf.float32, tf.float32]
     grid_size = hypes['grid_width'] * hypes['grid_height']
     shapes = ([hypes['image_height'], hypes['image_width'], 3],  # Image shape
-              [hypes['grid_height'], hypes['grid_width']],  # Grids
+              [hypes['grid_height'], hypes['grid_width'], hypes['num_classes']],  # Confidences
               [hypes['grid_height'], hypes['grid_width'], 4],  # Bounding boxes
-              [hypes['grid_height'], hypes['grid_width']])  # Confidences
+              [hypes['grid_height'], hypes['grid_width']])  # Masks
     capacity = 30
     q = tf.FIFOQueue(capacity=capacity, dtypes=dtypes, shapes=shapes)
     return q

@@ -18,7 +18,7 @@ import random
 import logging
 from collections import namedtuple
 
-
+COLORS = [(0, 0, 0, 100), (255, 0, 0, 100), (0,255, 0, 100), (0, 0, 255, 100), (255, 255, 0, 100), (0, 255, 255, 100), (255, 0, 255,100)]
 def annotation_to_h5(hypes, anno, cell_width, cell_height, max_len):
     """[summary]
 
@@ -48,7 +48,7 @@ def annotation_to_h5(hypes, anno, cell_width, cell_height, max_len):
             rect for rect in anno.rects if all(rect.intersection(cell))]
 
     boxes = np.zeros((1, cells_per_image, 4, max_len, 1), dtype=np.float)
-    box_flags = np.zeros((1, cells_per_image, 1, max_len, 1), dtype=np.float)
+    box_flags = np.zeros((1, cells_per_image, 1, max_len, hypes['num_classes']), dtype=np.float)
 
     for cidx in range(cells_per_image):
         # assert(cur_num_boxes <= max_len)
@@ -80,7 +80,8 @@ def annotation_to_h5(hypes, anno, cell_width, cell_height, max_len):
             #    box_list[cidx][bidx].silhouetteID, 1)
             box_class_id = box_list[cidx][bidx].classID
             #logging.info("Data utils: class id of box cidx, bidx = ({}, {}) is {}".format(cidx, bidx, box_class_id)) 
-            box_flags[0, cidx, 0, bidx, 0] = box_class_id
+            # Each channel of the tensor represents one class - 1 if the predicted box is of given class.
+            box_flags[0, cidx, 0, bidx, box_class_id] = 1
     return boxes, box_flags
 
 
@@ -231,8 +232,6 @@ def _get_ignore_rect(x, y, cell_size):
 
 def draw_rect(draw, rect, color):
     logging.info("data_utils: Draw rect called - drawing rect {}".format(rect))
-    COLORS = [(255, 0, 0), (0, 255, 0), (0, 0, 255),
-              (255, 255, 0), (0, 255, 255), (255, 0, 255)]
     rect_cords = ((rect.left, rect.top), (rect.left, rect.bottom),
                   (rect.right, rect.bottom), (rect.right, rect.top),
                   (rect.left, rect.top))
@@ -257,8 +256,9 @@ def draw_encoded(image, confs, mask=None, rects=None, cell_size=32):
     for y in range(shape[0]):
         for x in range(shape[1]):
             outline = (0, 0, 0, 255)
-            if confs[y, x]:
-                fill = (0, 255, 0, 100)
+            if confs[y, x].any():
+                idx = np.argmax(confs[y, x])
+                fill = COLORS[idx]
             else:
                 fill = (0, 0, 0, 0)
             rect = _get_ignore_rect(x, y, cell_size)

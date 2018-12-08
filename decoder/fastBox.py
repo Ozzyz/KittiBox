@@ -276,15 +276,18 @@ def _compute_rezoom_loss(hypes, rezoom_loss_input):
     outer_size = grid_size * hypes['batch_size']
     head = hypes['solver']['head_weights']
 
+    # true_boxes, pred_boxes, confidences, boxes_mask,pred_confs_deltas, pred_boxes_deltas, mask_r
     perm_truth, pred_boxes, classes, pred_mask, \
         pred_confs_deltas, pred_boxes_deltas, mask_r = rezoom_loss_input
+    logging.info("Shape of perm truth: {}".format(perm_truth.shape))
+    logging.info("Shape of pred boxes: {}".format(pred_boxes.shape))
     if hypes['rezoom_change_loss'] == 'center':
         error = (perm_truth[:, :, 0:2] - pred_boxes[:, :, 0:2]) \
             / tf.maximum(perm_truth[:, :, 2:4], 1.)
         square_error = tf.reduce_sum(tf.square(error), 2)
-        inside = tf.reshape(tf.to_int64(
+        inside = tf.to_int64(
             tf.logical_and(tf.less(square_error, 0.2**2),
-                           tf.greater(classes, 0))), [-1])
+                           tf.greater(classes, 0)))
     elif hypes['rezoom_change_loss'] == 'iou':
         pred_boxes_flat = tf.reshape(pred_boxes, [-1, 4])
         perm_truth_flat = tf.reshape(perm_truth, [-1, 4])
@@ -293,9 +296,11 @@ def _compute_rezoom_loss(hypes, rezoom_loss_input):
         inside = tf.reshape(tf.to_int64(tf.greater(iou, 0.5)), [-1])
     else:
         assert not hypes['rezoom_change_loss']
-        inside = tf.reshape(tf.to_int64((tf.greater(classes, 0))), [-1])
-
-    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        #inside = tf.reshape(tf.to_int64((tf.greater(classes, 0))), [-1])
+        inside = classes
+    logging.info("Shape of pred_confs_deltas: {}".format(pred_confs_deltas.shape))
+    logging.info("SHape of labels: {}".format(inside.shape))
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
         logits=pred_confs_deltas, labels=inside)
 
     delta_confs_loss = tf.reduce_sum(cross_entropy*mask_r) \
@@ -336,8 +341,6 @@ def loss(hypes, decoded_logits, labels):
     pred_logits = decoded_logits['pred_logits']
     pred_confidences = decoded_logits['pred_confidences']
     logging.info("pred_logits shape: {}".format(pred_logits.shape))
-    pred_confs_deltas = decoded_logits['pred_confs_deltas']
-    pred_boxes_deltas = decoded_logits['pred_boxes_deltas']
 
     grid_size = hypes['grid_width'] * hypes['grid_height']
     outer_size = grid_size * hypes['batch_size']
@@ -345,20 +348,24 @@ def loss(hypes, decoded_logits, labels):
     head = hypes['solver']['head_weights']
 
     # Compute confidence loss
-    confidences = tf.reshape(confidences, (outer_size, 1))
+    confidences = tf.reshape(confidences, (outer_size, hypes['num_classes']))
     logging.info("confidences/ pred_confidences shape {},  {}".format(confidences.shape, pred_confidences.shape))
     # Since we have multiple classes we can't binarize labels - instead just cast them to int64 
     # and calculate loss
-    true_classes = tf.reshape(tf.cast(confidences, 'int64'), [outer_size])
+    #true_classes = tf.reshape(tf.cast(confidences, 'int64'), [outer_size])
+    true_classes = tf.cast(confidences, 'int64')
     # Uncomment this if only single class (vehicle and background)
     #true_classes = tf.reshape(tf.cast(tf.greater(confidences, 0), 'int64'),[outer_size])
     pred_classes = tf.reshape(pred_logits, [outer_size, hypes['num_classes']])
-    mask_r = tf.reshape(mask, [outer_size])
+    mask_r = tf.reshape(mask, [outer_size, 1])
     logging.info("Calculating sparse softmax xentropy w logits between pred and true classes shapes {} and {}".format(pred_classes.shape, true_classes.shape))
     logging.info("Pred logits: {}".format(pred_logits))
     # Calculate loss 
-    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-        logits=pred_classes, labels=true_classes)
+    #cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+    #    logits=pred_classes, labels=true_classes)
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=pred_classes, labels=true_classes)
+    
+
     # ignore don't care areas
     cross_entropy_sum = (tf.reduce_sum(mask_r*cross_entropy))
     confidences_loss = cross_entropy_sum / outer_size * head[0]
@@ -370,15 +377,20 @@ def loss(hypes, decoded_logits, labels):
     # box loss for background prediction needs to be zerod out
     # Therefore, create a mask where each entry is 1 if the cell is to be considered
     # (if there is a class there) - else 0
-    boxes_mask = tf.reshape(
-        tf.cast(tf.greater(confidences, 0), 'float32'), (outer_size, 1, 1))
-
+   
+    #y = tf.convert_to_tensor([0]*hypes["num_classes"], dtype=np.float32)
+    squished_confs = tf.math.reduce_any(tf.cast(confidences, 'bool'), axis=-1, keepdims=True)
+    #boxes_mask = tf.reshape(
+    #    tf.cast(tf.greater(confidences, y), 'float32'), (outer_size, 1, 1))
+    boxes_mask = tf.reshape(tf.cast(squished_confs, 'float32'), (outer_size, 1, 1))
     # danger zone
     residual = (true_boxes - pred_boxes) * boxes_mask
 
     boxes_loss = tf.reduce_sum(tf.abs(residual)) / outer_size * head[1]
 
     if hypes['use_rezoom']:
+        pred_boxes_deltas = decoded_logits['pred_boxes_deltas']
+        pred_confs_deltas = decoded_logits['pred_confs_deltas']
         # add rezoom loss
         rezoom_loss_input = true_boxes, pred_boxes, confidences, boxes_mask, \
             pred_confs_deltas, pred_boxes_deltas, mask_r
@@ -434,9 +446,9 @@ def evaluation(hyp, images, labels, decoded_logits, losses, global_step):
                  hyp['grid_width'], hyp['num_classes']]
     pred_confidences_r = tf.reshape(pred_confidences, new_shape)
     # Set up summary operations for tensorboard
-    a = tf.equal(tf.cast(confidences, 'int64'),
-                 tf.argmax(pred_confidences_r, 3))
-
+    #a = tf.equal(tf.cast(confidences, 'int64'),
+    #             tf.argmax(pred_confidences_r, 3))
+    a = tf.equal(confidences, pred_confidences_r)
     accuracy = tf.reduce_mean(tf.cast(a, 'float32'), name='/accuracy')
 
     eval_list = []

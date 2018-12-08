@@ -33,7 +33,7 @@
         "learning_rate_step": null, 
         "hungarian_iou": 0.35,
         "weights": "",
-        "head_weights": [1.0, 0.1],
+        "head_weights": [0.1, 0.1],
         "max_steps": 140000
     },
     "use_rezoom": true,
