@@ -148,15 +148,17 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
     
     base_path = os.path.realpath(os.path.dirname(bdd_txt))
     files = [line.rstrip() for line in open(bdd_txt)]
-    if hypes['data']['truncate_data']:
-        files = files[:10]
-        random.seed(0)
+    random.seed(0)
 
     for epoch in itertools.count():
         if random_shuffle:
             random.shuffle(files)
+
+        if hypes['data']['truncate_data']:
+            subset = files[:hypes['truncate_count']]
+
         # Iterate through all files, optionally applying jitter, yielding images masks and bboxes for each
-        for file in files:
+        for file in subset:
             image_file, gt_image_file = file.split(" ")
             image_file = os.path.join(base_path, image_file)
             gt_image_file = os.path.join(base_path, gt_image_file)

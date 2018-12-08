@@ -9,7 +9,8 @@
     "data": {
         "train_file": "img_bbox_train.txt",
         "val_file": "img_bbox_val.txt",
-        "truncate_data": false,
+        "truncate_data": true,
+        "truncate_count": 1000,
         "eval_cmd": "../submodules/KittiObjective2/./evaluate_object2",
         "label_dir": "bdd100k/kitti_labels"
     },
