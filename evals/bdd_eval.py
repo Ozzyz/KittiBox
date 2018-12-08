@@ -181,6 +181,8 @@ def get_results(hypes, sess, image_pl, decoded_logits, validation=True):
     feed = None
     #logging.info("bdd_eval: Trying to read files {}".format(files)) 
     for i, file in enumerate(files):
+        if i > 200:
+            break;
         image_file = file.split(" ")[0]
         #if not validation and random.random() > 0.2:
         #    continue
