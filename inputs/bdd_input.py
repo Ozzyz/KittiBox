@@ -155,7 +155,7 @@ def _load_bdd_txt(bdd_txt, hypes, jitter=False, random_shuffle=True):
             random.shuffle(files)
 
         if hypes['data']['truncate_data']:
-            subset = files[:hypes['truncate_count']]
+            subset = files[:hypes['data']['truncate_count']]
 
         # Iterate through all files, optionally applying jitter, yielding images masks and bboxes for each
         for file in subset:
