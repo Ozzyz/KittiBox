@@ -122,6 +122,7 @@ def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_l
     logging.info("Number of rects: {}".format(len(acc_rects)))
     for rect_set, color in pairs:
         for rect in rect_set:
+            if rect.confidence > min_conf:
                 _draw_rect(draw, rect, color)
 
     image = np.array(im).astype('float32')
