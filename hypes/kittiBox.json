@@ -8,7 +8,7 @@
     },
     "data": {
         "train_file": "img_bbox_train.txt",
-        "val_file": "img_bbox_val.txt",
+        "val_file": "img_bbox_val_small.txt",
         "truncate_data": false,
         "truncate_count": 1000,
         "eval_cmd": "../submodules/KittiObjective2/./evaluate_object2",
@@ -27,7 +27,7 @@
     "path": ["../incl"],
     "solver": {
         "opt": "Adam",
-        "use_jitter": false,
+        "use_jitter": true,
         "rnd_seed": 1,
         "epsilon": 0.00001, 
         "learning_rate": 1e-5,
